@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>가계부</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root {
+    /* BMW Design System */
+    --primary: #1c69d4;
+    --primary-active: #0653b6;
+    --canvas: #ffffff;
+    --surface-soft: #f7f7f7;
+    --surface-card: #fafafa;
+    --surface-dark: #1a2129;
+    --surface-dark-elevated: #262e38;
+    --hairline: #e6e6e6;
+    --hairline-strong: #cccccc;
+    --ink: #262626;
+    --body: #3c3c3c;
+    --body-strong: #1a1a1a;
+    --muted: #6b6b6b;
+    --muted-soft: #9a9a9a;
+    --on-primary: #ffffff;
+    --on-dark: #ffffff;
+    --on-dark-soft: #bbbbbb;
+    --error: #dc2626;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --m-blue-light: #0066b1;
+    --m-red: #e22718;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--surface-soft);
+    color: var(--ink);
+    min-height: 100vh;
+    font-weight: 300;
+  }
+
+  /* ── NAV ── */
+  .nav {
+    display: flex;
+    background: var(--canvas);
+    border-top: 1px solid var(--hairline);
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .nav-btn {
+    flex: 1; padding: 10px 0 12px; border: none; background: none; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 700; color: var(--muted);
+    transition: color .15s; letter-spacing: 1px; text-transform: uppercase;
+    font-family: inherit;
+  }
+  .nav-btn.active { color: var(--primary); }
+  .nav-btn svg { width: 22px; height: 22px; stroke-width: 1.5; }
+  .nav-btn.active svg { stroke-width: 2; }
+
+  /* ── PAGE ── */
+  .page { display: none; padding: 0 0 88px; max-width: 480px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* ── HOME HERO (dark band) ── */
+  .home-header {
+    background: var(--surface-dark);
+    padding: 32px 20px 28px;
+    margin-bottom: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .home-month-label {
+    font-size: 11px; font-weight: 700; color: var(--on-dark-soft);
+    letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px;
+  }
+  .home-sub-label {
+    font-size: 28px; font-weight: 700; color: var(--on-dark);
+    margin-bottom: 20px; line-height: 1.1; letter-spacing: 0;
+  }
+  .currency-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  .currency-pill {
+    font-size: 13px; font-weight: 700; color: var(--on-dark);
+    background: var(--surface-dark-elevated);
+    border: 1px solid rgba(255,255,255,.12);
+    padding: 6px 12px; display: flex; align-items: center; gap: 6px;
+    border-radius: 0;
+  }
+  .home-total-label {
+    font-size: 11px; font-weight: 700; color: var(--on-dark-soft);
+    letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px;
+  }
+  .home-total-big {
+    font-size: 40px; font-weight: 700; color: var(--on-dark);
+    line-height: 1; margin-bottom: 6px; letter-spacing: 0;
+  }
+  .base-equiv { font-size: 13px; font-weight: 300; color: var(--on-dark-soft); }
+  .rate-info { font-size: 11px; font-weight: 300; color: rgba(255,255,255,.35); margin-top: 3px; }
+
+  /* ── FAB ── */
+  .fab {
+    position: fixed; bottom: calc(68px + env(safe-area-inset-bottom)); right: 20px;
+    width: 52px; height: 52px; border-radius: 0;
+    background: var(--primary); border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 99; transition: background .15s;
+  }
+  .fab:active { background: var(--primary-active); }
+  .fab svg { width: 24px; height: 24px; color: #fff; stroke-width: 2.5; }
+
+  /* ── SECTION TITLE ── */
+  .section-title {
+    font-size: 11px; font-weight: 700; color: var(--muted);
+    padding: 20px 20px 10px; text-transform: uppercase; letter-spacing: 1.5px;
+  }
+
+  /* ── EXPENSE LIST ── */
+  .expense-list { display: flex; flex-direction: column; gap: 0; }
+  .expense-item {
+    background: var(--canvas);
+    border-bottom: 1px solid var(--hairline);
+    padding: 16px 20px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .expense-icon {
+    width: 40px; height: 40px; border-radius: 0;
+    background: var(--surface-card);
+    border: 1px solid var(--hairline);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .expense-info { flex: 1; min-width: 0; }
+  .expense-cat { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .expense-meta {
+    font-size: 12px; font-weight: 300; color: var(--muted);
+    margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .expense-amount {
+    font-size: 15px; font-weight: 700; color: var(--ink);
+    flex-shrink: 0; display: flex; align-items: center; gap: 4px;
+  }
+  .cur-flag { font-size: 14px; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(26,33,41,.7); z-index: 200; align-items: flex-end;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--canvas);
+    border-radius: 0;
+    width: 100%; max-width: 480px; margin: 0 auto;
+    padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+    border-top: 3px solid var(--primary);
+  }
+  .modal-handle { width: 32px; height: 3px; background: var(--hairline); border-radius: 0; margin: 0 auto 20px; }
+  .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; letter-spacing: 0; color: var(--ink); }
+
+  /* ── AMOUNT INPUT ── */
+  .amount-row { display: flex; gap: 0; margin-bottom: 8px; align-items: stretch; border: 1px solid var(--hairline); }
+  .amount-input-wrap { flex: 1; }
+  .amount-input {
+    width: 100%; font-size: 28px; font-weight: 700; border: none; outline: none;
+    background: var(--canvas); padding: 14px 16px; color: var(--ink);
+    font-family: inherit; border-right: 1px solid var(--hairline);
+  }
+  .currency-select {
+    background: var(--surface-card); border: none; padding: 0 14px;
+    font-size: 13px; font-weight: 700; color: var(--primary); cursor: pointer;
+    outline: none; min-width: 90px; font-family: inherit; letter-spacing: .3px;
+    border-radius: 0;
+  }
+
+  .input-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .input-field {
+    flex: 1; background: var(--canvas); border: 1px solid var(--hairline);
+    border-radius: 0; padding: 12px 14px; font-size: 14px; font-weight: 300;
+    color: var(--ink); outline: none; font-family: inherit;
+  }
+  .input-field:focus { border-color: var(--ink); }
+  .input-field::placeholder { color: var(--muted-soft); }
+
+  /* ── CATEGORY CHIPS ── */
+  .cat-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .cat-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; }
+  .cat-manage-btn { font-size: 11px; font-weight: 700; color: var(--primary); background: none; border: none; cursor: pointer; padding: 4px 8px; letter-spacing: .5px; text-transform: uppercase; font-family: inherit; }
+  .cat-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .cat-tag {
+    padding: 7px 14px; border-radius: 0;
+    border: 1px solid var(--hairline-strong);
+    background: var(--canvas); font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: all .1s; white-space: nowrap; color: var(--ink);
+    font-family: inherit;
+  }
+  .cat-tag.selected { border-color: var(--primary); background: var(--primary); color: #fff; }
+  .cat-add-btn {
+    padding: 7px 14px; border-radius: 0; border: 1px dashed var(--hairline-strong);
+    background: none; font-size: 13px; cursor: pointer; color: var(--muted);
+    font-weight: 700; font-family: inherit;
+  }
+
+  .save-btn {
+    width: 100%; padding: 16px; border-radius: 0;
+    background: var(--primary); color: var(--on-primary);
+    border: none; font-size: 14px; font-weight: 700;
+    cursor: pointer; margin-top: 4px; transition: background .1s;
+    letter-spacing: .5px; text-transform: uppercase; font-family: inherit;
+  }
+  .save-btn:active { background: var(--primary-active); }
+  .save-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* ── STATISTICS ── */
+  .stat-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 20px 16px; background: var(--canvas);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .stat-header h2 { font-size: 20px; font-weight: 700; color: var(--ink); letter-spacing: 0; }
+  .month-nav { display: flex; align-items: center; gap: 0; }
+  .month-nav button {
+    background: var(--surface-card); border: 1px solid var(--hairline);
+    cursor: pointer; color: var(--ink); font-size: 16px; padding: 6px 12px;
+    border-radius: 0; transition: background .1s; font-family: inherit;
+  }
+  .month-nav button:active { background: var(--hairline); }
+  .month-nav span {
+    font-size: 13px; font-weight: 700; min-width: 64px; text-align: center;
+    letter-spacing: .5px; border-top: 1px solid var(--hairline);
+    border-bottom: 1px solid var(--hairline); padding: 6px 0;
+  }
+
+  /* Stat content padding */
+  #page-stat .stat-card { margin: 0; border-radius: 0; padding: 20px; border-bottom: 1px solid var(--hairline); background: var(--canvas); }
+  .stat-card { background: var(--canvas); border-radius: 0; padding: 20px; margin-bottom: 0; border-bottom: 1px solid var(--hairline); }
+  .stat-card-title { font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 1.5px; }
+  .stat-total-list { display: flex; flex-direction: column; gap: 4px; }
+  .stat-total-row { font-size: 26px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 8px; letter-spacing: 0; }
+  .stat-total-row.equiv { font-size: 13px; color: var(--primary); font-weight: 700; margin-top: 8px; letter-spacing: .3px; }
+  .pie-wrap { display: flex; flex-direction: column; align-items: center; padding: 8px 0; }
+  canvas#pieChart { max-width: 180px; }
+  .cat-bar-list { display: flex; flex-direction: column; gap: 16px; }
+  .cat-bar-header { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; font-weight: 300; }
+  .cat-bar-header span:last-child { font-weight: 700; color: var(--ink); }
+  .cat-bar-bg { height: 4px; background: var(--hairline); border-radius: 0; overflow: hidden; }
+  .cat-bar-fill { height: 100%; border-radius: 0; background: var(--primary); transition: width .45s ease; }
+  .day-group { margin-bottom: 0; border-bottom: 1px solid var(--hairline); }
+  .day-group-header {
+    font-size: 11px; font-weight: 700; color: var(--muted);
+    padding: 12px 20px 8px; display: flex; justify-content: space-between;
+    text-transform: uppercase; letter-spacing: 1.5px; background: var(--surface-soft);
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  /* ── SETTINGS ── */
+  .settings-section { background: var(--canvas); border-radius: 0; padding: 0 20px; margin-bottom: 0; border-bottom: 1px solid var(--hairline); }
+  .settings-section + .settings-section { margin-top: 12px; border-top: 1px solid var(--hairline); }
+  .settings-section h3 { font-size: 11px; font-weight: 700; color: var(--muted); padding: 16px 0 12px; text-transform: uppercase; letter-spacing: 1.5px; border-bottom: 1px solid var(--hairline); margin-bottom: 0; }
+  .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--hairline); }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-label { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; color: var(--ink); }
+  .setting-flag { font-size: 20px; }
+  .toggle { position: relative; width: 44px; height: 24px; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; inset: 0; background: var(--hairline); border-radius: 0; cursor: pointer; transition: .2s; }
+  .toggle-slider:before { content:''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 0; transition: .2s; }
+  .toggle input:checked + .toggle-slider { background: var(--primary); }
+  .toggle input:checked + .toggle-slider:before { transform: translateX(20px); }
+  .radio-group { display: flex; flex-direction: column; }
+  .radio-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--hairline); cursor: pointer; }
+  .radio-row:last-child { border-bottom: none; }
+  .radio-row input[type=radio] { accent-color: var(--primary); width: 17px; height: 17px; cursor: pointer; }
+
+  /* ── SETTINGS PAGE ── */
+  #page-settings { padding: 0 0 88px; background: var(--surface-soft); }
+  #page-settings h2 { font-size: 20px; font-weight: 700; padding: 20px 20px 16px; background: var(--canvas); border-bottom: 1px solid var(--hairline); }
+  #page-settings > div { margin-top: 12px; }
+  #page-settings > div:first-of-type { margin-top: 0; }
+
+  /* ── COMMON ── */
+  .loading { text-align: center; padding: 48px 20px; color: var(--muted); font-weight: 300; }
+  .empty { text-align: center; padding: 48px 20px; color: var(--muted); font-size: 14px; font-weight: 300; line-height: 1.7; }
+
+  /* ── CATEGORY MODAL ── */
+  .cat-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(26,33,41,.7); z-index: 300; align-items: center; justify-content: center; }
+  .cat-modal-overlay.open { display: flex; }
+  .cat-modal { background: var(--canvas); border-radius: 0; padding: 24px; width: calc(100% - 40px); max-width: 340px; border-top: 3px solid var(--primary); }
+  .cat-modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+  .cat-modal input {
+    width: 100%; background: var(--canvas); border: 1px solid var(--hairline);
+    border-radius: 0; padding: 12px 16px; font-size: 14px; font-weight: 300;
+    outline: none; margin-bottom: 12px; font-family: inherit; color: var(--ink);
+  }
+  .cat-modal input:focus { border-color: var(--ink); }
+  .cat-modal-btns { display: flex; gap: 8px; }
+  .cat-modal-btns button { flex: 1; padding: 12px; border-radius: 0; border: none; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; letter-spacing: .3px; text-transform: uppercase; }
+  .btn-cancel { background: var(--surface-soft); color: var(--muted); border: 1px solid var(--hairline) !important; }
+  .btn-confirm { background: var(--primary); color: #fff; }
+  .btn-delete { background: var(--canvas); color: var(--error); border: 1px solid var(--error) !important; }
+  .emoji-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .emoji-btn { width: 36px; height: 36px; border-radius: 0; border: 1px solid var(--hairline); background: var(--surface-card); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .emoji-btn.selected { border-color: var(--primary); background: var(--primary); }
+
+  /* ── MANAGE MODAL ── */
+  .manage-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(26,33,41,.7); z-index: 300; align-items: flex-end; }
+  .manage-modal-overlay.open { display: flex; }
+  .manage-modal { background: var(--canvas); border-radius: 0; border-top: 3px solid var(--primary); width: 100%; max-width: 480px; margin: 0 auto; padding: 24px 20px calc(24px + env(safe-area-inset-bottom)); max-height: 70vh; overflow-y: auto; }
+  .manage-modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+  .manage-cat-item { display: flex; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--hairline); gap: 12px; }
+  .manage-cat-item:last-child { border-bottom: none; }
+  .manage-cat-emoji { font-size: 20px; width: 32px; text-align: center; }
+  .manage-cat-name { flex: 1; font-size: 15px; font-weight: 700; }
+  .manage-cat-count { font-size: 12px; font-weight: 300; color: var(--muted); margin-right: 8px; }
+  .icon-btn { background: none; border: none; cursor: pointer; padding: 6px; border-radius: 0; font-size: 16px; }
+
+  /* ── SWIPE ── */
+  .swipe-wrap { position: relative; overflow: hidden; border-radius: 0; border-bottom: 1px solid var(--hairline); }
+  .swipe-wrap .expense-item { border-radius: 0; border-bottom: none; transition: transform .18s ease; will-change: transform; width: 100%; position: relative; z-index: 1; }
+  .swipe-actions { position: absolute; right: 0; top: 0; bottom: 0; display: flex; }
+  .swipe-edit-btn { width: 76px; background: var(--primary); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 4px; color: #fff; font-size: 10px; font-weight: 700; cursor: pointer; letter-spacing: 1px; text-transform: uppercase; }
+  .swipe-delete-btn { width: 76px; background: var(--error); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 4px; color: #fff; font-size: 10px; font-weight: 700; cursor: pointer; letter-spacing: 1px; text-transform: uppercase; }
+  .swipe-edit-btn svg, .swipe-delete-btn svg { width: 18px; height: 18px; stroke-width: 2; }
+
+  /* ── PENDING BADGE ── */
+  .pending-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; color: #92700A; background: #FFF3C4; border-radius: 0; padding: 2px 6px; margin-top: 4px; letter-spacing: .5px; text-transform: uppercase; }
+  .pending-dot { width: 5px; height: 5px; border-radius: 50%; background: #92700A; animation: blink 1.2s ease-in-out infinite; flex-shrink: 0; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+  /* ── TOAST ── */
+  .toast { position: fixed; bottom: calc(80px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%) translateY(12px); background: var(--surface-dark); color: var(--on-dark); padding: 10px 20px; border-radius: 0; font-size: 13px; font-weight: 700; opacity: 0; transition: opacity .2s, transform .2s; z-index: 999; white-space: nowrap; pointer-events: none; letter-spacing: .3px; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── LOADING OVERLAY ── */
+  .load-overlay { position: fixed; inset: 0; z-index: 500; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; transition: opacity .3s; }
+  .load-overlay.hidden { opacity: 0; pointer-events: none; }
+  .load-blur { position: absolute; inset: 0; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); background: rgba(247,247,247,.85); }
+  .load-box { position: relative; background: var(--canvas); border-top: 3px solid var(--primary); padding: 28px 40px; text-align: center; }
+  .load-spinner { width: 32px; height: 32px; border: 2px solid var(--hairline); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 14px; }
+  .load-box p { font-size: 15px; font-weight: 700; color: var(--ink); letter-spacing: 0; }
+  .load-box small { font-size: 12px; font-weight: 300; color: var(--muted); margin-top: 4px; display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── SYNC BAR ── */
+  .sync-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 400; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 16px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; transform: translateY(-100%); transition: transform .25s ease; border-bottom: 2px solid transparent; }
+  .sync-bar.show { transform: translateY(0); }
+  .sync-bar.syncing { background: #FFFAEB; color: #92700A; border-bottom-color: var(--warning); }
+  .sync-bar.synced { background: #F0FBF4; color: #166534; border-bottom-color: var(--success); }
+  .sync-bar.error { background: #FEF0F0; color: var(--error); border-bottom-color: var(--error); }
+  .sync-bar.offline { background: #EEF4FF; color: var(--primary); border-bottom-color: var(--primary); }
+  .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .sync-dot.spinning { border: 2px solid currentColor; background: transparent; border-top-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; width: 10px; height: 10px; }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- 로딩 오버레이 -->
+<div class="load-overlay" id="load-overlay">
+  <div class="load-blur"></div>
+  <div class="load-box">
+    <div class="load-spinner"></div>
+    <p>데이터 불러오는 중</p>
+    <small>구글 시트에서 가져오고 있어요...</small>
+  </div>
+</div>
+
+<!-- 동기화 상태 바 -->
+<div class="sync-bar" id="sync-bar">
+  <div class="sync-dot" id="sync-dot"></div>
+  <span id="sync-text"></span>
+</div>
+
+<!-- 홈 -->
+<div class="page active" id="page-home">
+  <div class="home-header">
+    <div class="home-month-label" id="home-month-label"></div>
+    <div class="home-sub-label" id="home-sub-label">이번 달 지출</div>
+    <div class="currency-pills" id="currency-pills"></div>
+    <div class="home-total-label" id="home-total-label"></div>
+    <div class="home-total-big" id="home-total-big"></div>
+    <div class="base-equiv" id="base-equiv"></div>
+    <div class="rate-info" id="rate-info"></div>
+  </div>
+  <div class="section-title" id="recent-title">최근 내역</div>
+  <div class="expense-list" id="recent-list"><div class="loading">불러오는 중...</div></div>
+</div>
+
+<!-- 통계 -->
+<div class="page" id="page-stat">
+  <div class="stat-header" id="stat-header-bar">
+    <h2>통계</h2>
+    <div class="month-nav">
+      <button onclick="changeMonth(-1)">‹</button>
+      <span id="stat-month-label"></span>
+      <button onclick="changeMonth(1)">›</button>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-title">총 지출</div>
+    <div class="stat-total-list" id="stat-total-list"></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-title">분류별 지출</div>
+    <div class="pie-wrap"><canvas id="pieChart" width="200" height="200"></canvas></div>
+    <div class="cat-bar-list" id="cat-bar-list" style="margin-top:16px;"></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-title">일별 내역</div>
+    <div id="day-list"></div>
+  </div>
+</div>
+
+<!-- 설정 -->
+<div class="page" id="page-settings">
+  <h2>설정</h2>
+
+  <div class="settings-section">
+    <h3>사용 화폐</h3>
+    <div id="currency-toggle-list"></div>
+  </div>
+
+  <div class="settings-section">
+    <h3>합산 기준 화폐</h3>
+    <p style="font-size:12px;color:var(--sub);margin-bottom:12px;">여러 화폐 지출을 하나로 합산할 때 기준이 되는 화폐</p>
+    <div class="radio-group" id="base-currency-list"></div>
+  </div>
+
+  <div class="settings-section">
+    <h3>날짜 기준 시간대</h3>
+    <p style="font-size:12px;color:var(--sub);margin-bottom:12px;">어느 나라에서 쓰든 이 시간대로 날짜가 저장돼요</p>
+    <div class="radio-group" id="timezone-list"></div>
+  </div>
+
+  <div class="settings-section">
+    <h3>언어 설정</h3>
+    <div class="radio-group" id="language-list"></div>
+  </div>
+
+  <div class="settings-section" style="margin-top:4px;">
+    <div style="font-size:12px;color:var(--sub);text-align:center;padding:4px 0;" id="rate-auto-update-text">
+      환율은 앱 시작 시 자동으로 업데이트돼요
+    </div>
+  </div>
+</div>
+
+<!-- FAB -->
+<button class="fab" onclick="openModal()" id="fab-btn">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+</button>
+
+<!-- 하단 네비 -->
+<nav class="nav">
+  <button class="nav-btn active" onclick="switchPage('home',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    홈
+  </button>
+  <button class="nav-btn" onclick="switchPage('stat',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    통계
+  </button>
+  <button class="nav-btn" onclick="switchPage('settings',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    설정
+  </button>
+</nav>
+
+<!-- 입력 모달 -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeOnOverlay(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">지출 추가</div>
+    <div class="amount-row">
+      <div class="amount-input-wrap">
+        <input class="amount-input" id="amount-input" type="number" inputmode="numeric" placeholder="0" />
+      </div>
+      <select class="currency-select" id="currency-select" onchange="onCurrencyChange()"></select>
+    </div>
+    <div class="input-row">
+      <input class="input-field" id="date-input" type="date" />
+      <input class="input-field" id="memo-input" type="text" placeholder="메모 (선택)" />
+    </div>
+    <div class="cat-label-row">
+      <span class="cat-label">분류</span>
+      <button class="cat-manage-btn" onclick="openManageModal()">관리 ›</button>
+    </div>
+    <div class="cat-wrap" id="cat-wrap"></div>
+    <button class="save-btn" id="save-btn" onclick="saveExpense()">저장</button>
+  </div>
+</div>
+
+<!-- 분류 추가/수정 모달 -->
+<div class="cat-modal-overlay" id="cat-modal-overlay">
+  <div class="cat-modal">
+    <h3 id="cat-modal-title">분류 추가</h3>
+    <div class="emoji-grid" id="emoji-grid"></div>
+    <input id="cat-name-input" type="text" placeholder="분류 이름 (예: 카페)" maxlength="10" />
+    <div class="cat-modal-btns" id="cat-modal-btns"></div>
+  </div>
+</div>
+
+<!-- 분류 관리 모달 -->
+<div class="manage-modal-overlay" id="manage-modal-overlay" onclick="closeManageOnOverlay(event)">
+  <div class="manage-modal">
+    <div class="modal-handle"></div>
+    <h3>분류 관리</h3>
+    <div id="manage-cat-list"></div>
+  </div>
+</div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxr8XaIaxfxWH7vys-sXJV3hZRh74AEKsB8XYKtPvyESTrVkx1LWQf9Q6c3UqxMrDM3UA/exec';
+
+// 지원 화폐 3종
+const ALL_CURRENCIES = {
+  THB: { symbol: '฿', name: '태국 바트', flag: '🇹🇭', decimals: 0 },
+  CNY: { symbol: '¥', name: '중국 위안', flag: '🇨🇳', decimals: 2 },
+  KRW: { symbol: '₩', name: '한국 원화', flag: '🇰🇷', decimals: 0 },
+};
+
+const EMOJIS = ['🍚','☕','🚌','🛒','🎮','🎬','👕','💊','🏋️','✈️','🎁','📚','🐶','🍺','💡','🏠','💇','🍕'];
+const DEFAULT_CATS = [
+  {name:'식비', emoji:'🍚', count:0},
+  {name:'카페', emoji:'☕', count:0},
+  {name:'교통', emoji:'🚌', count:0},
+  {name:'쇼핑', emoji:'🛒', count:0},
+  {name:'여가', emoji:'🎮', count:0},
+  {name:'의료', emoji:'💊', count:0},
+];
+
+const LANGUAGES = [
+  { code: 'ko', label: '🇰🇷 한국어' },
+  { code: 'en', label: '🇺🇸 English' },
+  { code: 'zh', label: '🇨🇳 中文' },
+];
+
+const I18N = {
+  ko: {
+    home:'홈', stat:'통계', settings:'설정',
+    thisMonth:'이번 달 지출',
+    recentTitle:(y,m)=>`${y}-${m}월 최근 내역`,
+    monthLabel:(y,m)=>`${y}년 ${m}월`,
+    noExpense:'이번 달 지출 내역이 없어요<br>+ 버튼으로 추가해보세요',
+    addExpense:'지출 추가', editExpense:'지출 수정',
+    save:'저장', cancel:'취소', del:'삭제', edit:'수정',
+    memoPlaceholder:'메모 (선택)', catLabel:'분류', manageBtn:'관리 ›',
+    addCat:'+ 추가', addCatTitle:'분류 추가', editCatTitle:'분류 수정',
+    catNamePlaceholder:'분류 이름 (예: 카페)',
+    pendingBadge:'로컬 저장중',
+    syncing:'동기화 중...', synced:'✓ 동기화 완료',
+    offline:'📴 오프라인 — 연결 시 자동 동기화',
+    syncError:'⚠️ 저장 실패 — 네트워크 확인',
+    loadingTitle:'데이터 불러오는 중', loadingSmall:'구글 시트에서 가져오고 있어요...',
+    loadError:'데이터를 불러오지 못했어요',
+    totalLabel:'총 지출', catLabel2:'분류별 지출', dayLabel:'일별 내역',
+    baseEquivLabel:(name)=>`${name} 환산 합계`,
+    rateInfo:(t)=>`환율 ${t} 기준`,
+    noExpenseStat:'지출 내역이 없어요',
+    usedCurrency:'사용 화폐', baseCurrency:'합산 기준 화폐',
+    baseCurrencyDesc:'여러 화폐 지출을 하나로 합산할 때 기준이 되는 화폐',
+    timezone:'날짜 기준 시간대', timezoneDesc:'어느 나라에서 쓰든 이 시간대로 날짜가 저장돼요',
+    languageLabel:'언어 설정',
+    rateAutoUpdate:'환율은 앱 시작 시 자동으로 업데이트돼요',
+    confirmDelete:(cat,amt)=>`"${cat}" ${amt} 삭제할까요?`,
+    manageCats:'분류 관리', addNewCat:'+ 새 분류 추가',
+    times:'회', equiv:(f,a)=>`${f} ≈ ${a} 합산`,
+    curNames:{THB:'태국 바트',CNY:'중국 위안',KRW:'한국 원화'},
+  },
+  en: {
+    home:'Home', stat:'Stats', settings:'Settings',
+    thisMonth:'This Month',
+    recentTitle:(y,m)=>`${y}-${m} Recent`,
+    monthLabel:(y,m)=>`${y} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]}`,
+    noExpense:'No expenses this month<br>Tap + to add one',
+    addExpense:'Add Expense', editExpense:'Edit Expense',
+    save:'Save', cancel:'Cancel', del:'Delete', edit:'Edit',
+    memoPlaceholder:'Note (optional)', catLabel:'Category', manageBtn:'Manage ›',
+    addCat:'+ Add', addCatTitle:'Add Category', editCatTitle:'Edit Category',
+    catNamePlaceholder:'Category name (e.g. Cafe)',
+    pendingBadge:'Saving locally',
+    syncing:'Syncing...', synced:'✓ Synced',
+    offline:'📴 Offline — will sync when connected',
+    syncError:'⚠️ Save failed — check network',
+    loadingTitle:'Loading data', loadingSmall:'Fetching from Google Sheets...',
+    loadError:'Failed to load data',
+    totalLabel:'Total', catLabel2:'By Category', dayLabel:'Daily',
+    baseEquivLabel:(name)=>`${name} equivalent`,
+    rateInfo:(t)=>`Rates as of ${t}`,
+    noExpenseStat:'No expenses',
+    usedCurrency:'Currencies', baseCurrency:'Base Currency',
+    baseCurrencyDesc:'Used to combine multiple currencies into one total',
+    timezone:'Timezone', timezoneDesc:'Dates are saved in this timezone regardless of location',
+    languageLabel:'Language',
+    rateAutoUpdate:'Exchange rates update automatically on launch',
+    confirmDelete:(cat,amt)=>`Delete "${cat}" ${amt}?`,
+    manageCats:'Manage Categories', addNewCat:'+ New Category',
+    times:'x', equiv:(f,a)=>`${f} ≈ ${a} total`,
+    curNames:{THB:'Thai Baht',CNY:'Chinese Yuan',KRW:'Korean Won'},
+  },
+  zh: {
+    home:'主页', stat:'统计', settings:'设置',
+    thisMonth:'本月支出',
+    recentTitle:(y,m)=>`${y}年${m}月 最近记录`,
+    monthLabel:(y,m)=>`${y}年${m}月`,
+    noExpense:'本月暂无支出<br>点击+添加',
+    addExpense:'添加支出', editExpense:'编辑支出',
+    save:'保存', cancel:'取消', del:'删除', edit:'编辑',
+    memoPlaceholder:'备注（可选）', catLabel:'分类', manageBtn:'管理 ›',
+    addCat:'+ 添加', addCatTitle:'添加分类', editCatTitle:'编辑分类',
+    catNamePlaceholder:'分类名称（例：咖啡）',
+    pendingBadge:'本地保存中',
+    syncing:'同步中...', synced:'✓ 同步完成',
+    offline:'📴 离线 — 联网后自动同步',
+    syncError:'⚠️ 保存失败 — 请检查网络',
+    loadingTitle:'加载数据中', loadingSmall:'正在从Google表格获取...',
+    loadError:'数据加载失败',
+    totalLabel:'总支出', catLabel2:'按分类', dayLabel:'每日记录',
+    baseEquivLabel:(name)=>`${name}换算合计`,
+    rateInfo:(t)=>`汇率更新于 ${t}`,
+    noExpenseStat:'暂无支出记录',
+    usedCurrency:'使用货币', baseCurrency:'基准货币',
+    baseCurrencyDesc:'将多种货币合并为一个总额时的基准',
+    timezone:'时区设置', timezoneDesc:'无论在哪个国家，日期都按此时区保存',
+    languageLabel:'语言设置',
+    rateAutoUpdate:'汇率在启动时自动更新',
+    confirmDelete:(cat,amt)=>`删除"${cat}" ${amt}？`,
+    manageCats:'管理分类', addNewCat:'+ 新增分类',
+    times:'次', equiv:(f,a)=>`${f} ≈ ${a} 合计`,
+    curNames:{THB:'泰国铢',CNY:'人民币',KRW:'韩国元'},
+  },
+};
+
+function t(key, ...args) {
+  const lang = settings.language || 'ko';
+  const tr = I18N[lang] || I18N.ko;
+  const val = tr[key] ?? I18N.ko[key];
+  return typeof val === 'function' ? val(...args) : val;
+}
+
+const TIMEZONES = [
+  { label: '🇹🇭 태국 (UTC+7)', offset: 7 },
+  { label: '🇨🇳 중국 (UTC+8)', offset: 8 },
+  { label: '🇰🇷 한국 (UTC+9)', offset: 9 },
+];
+
+// 설정 불러오기
+function loadSettings() {
+  const def = { activeCurrencies: ['THB','CNY','KRW'], baseCurrency: 'THB', timezoneOffset: 7, language: 'ko' };
+  try { return Object.assign(def, JSON.parse(localStorage.getItem('settings') || '{}')); }
+  catch { return def; }
+}
+function saveSettings(s) { localStorage.setItem('settings', JSON.stringify(s)); }
+
+let settings = loadSettings();
+let categories = JSON.parse(localStorage.getItem('cats') || 'null') || DEFAULT_CATS;
+let allExpenses = [];
+let selectedCat = null;
+let selectedEmoji = EMOJIS[0];
+let editingCatName = null;
+let statMonth = new Date(); statMonth.setDate(1);
+let exchangeRates = {}; // THB 기준
+let rateUpdatedAt = null;
+let editingExpenseIdx = null;
+
+// ── 유틸 ─────────────────────────────────────────────────
+const todayStr = () => {
+  const d = new Date(Date.now() + (settings.timezoneOffset ?? 7) * 3600000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+};
+
+// 어떤 형식이든 YYYY-MM-DD로 정규화
+function normalizeDate(raw) {
+  if (!raw) return '';
+  const s = String(raw).trim();
+  // 이미 YYYY-MM-DD 형식
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  // 그 외 형식은 Date로 파싱 후 Bangkok 기준으로 변환
+  const d = new Date(s);
+  if (isNaN(d)) return s.slice(0, 10);
+  const offset = (settings.timezoneOffset ?? 7) * 60;
+  const local = new Date(d.getTime() + (offset + d.getTimezoneOffset()) * 60000);
+  return `${local.getUTCFullYear()}-${String(local.getUTCMonth()+1).padStart(2,'0')}-${String(local.getUTCDate()).padStart(2,'0')}`;
+}
+
+function fmtCur(amount, currency) {
+  const c = ALL_CURRENCIES[currency] || ALL_CURRENCIES.THB;
+  return `${c.symbol}${Number(amount).toLocaleString('en-US', {maximumFractionDigits: c.decimals, minimumFractionDigits: 0})}`;
+}
+
+function flagOf(currency) {
+  return (ALL_CURRENCIES[currency] || ALL_CURRENCIES.THB).flag;
+}
+
+// 임의 화폐 → 기준 화폐 환산 (THB 기준 rates 사용)
+function convertTo(amount, fromCur, toCur) {
+  if (fromCur === toCur) return amount;
+  if (!exchangeRates[fromCur] || !exchangeRates[toCur]) return null;
+  // fromCur → THB → toCur
+  const thb = amount / exchangeRates[fromCur];
+  return thb * exchangeRates[toCur];
+}
+// THB 기준 rates에서: 1THB = rates[X] X
+// fromCur→THB: thb = amount / rates[fromCur]  (rates[THB]=1)
+// THB→toCur:   result = thb * rates[toCur]
+
+function saveCats() { localStorage.setItem('cats', JSON.stringify(categories)); }
+function sortedCats() { return [...categories].sort((a,b) => b.count - a.count); }
+
+// ── 환율 로드 ──────────────────────────────────────────────
+async function loadExchangeRates() {
+  try {
+    const res = await fetch('https://api.exchangerate-api.com/v4/latest/THB');
+    const json = await res.json();
+    exchangeRates = json.rates;
+    exchangeRates['THB'] = 1;
+    rateUpdatedAt = new Date().toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'});
+    renderHome();
+    if (document.getElementById('page-stat').classList.contains('active')) renderStat();
+  } catch(e) {}
+}
+
+// ── 페이지 전환 ───────────────────────────────────────────
+function switchPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  btn.classList.add('active');
+  document.getElementById('fab-btn').style.display = name === 'home' ? 'flex' : 'none';
+  if (name === 'home') renderHome();
+  if (name === 'stat') renderStat();
+  if (name === 'settings') renderSettings();
+}
+
+// ── 데이터 로드 ───────────────────────────────────────────
+async function loadData() {
+  showLoading();
+  try {
+    const res = await fetch(GAS_URL);
+    const json = await res.json();
+    if (json.success) {
+      const synced = json.data.map(r => ({
+        date: normalizeDate(r.date),
+        _row: r._row,
+        amount: Number(r.amount) || 0,
+        category: r.category || '',
+        memo: r.memo || '',
+        currency: r.currency || 'THB',
+        time: r.time || ''
+      })).filter(r => r.date && r.amount);
+
+      // 대기열 항목은 유지 (아직 시트에 없으니 중복 없음)
+      const pending = loadQueue().map(item => ({
+        date: item.date,
+        amount: Number(item.amount),
+        category: item.category,
+        memo: item.memo || '',
+        currency: item.currency,
+        time: item.time,
+        _pending: true,
+        _pendingId: item._pendingId
+      }));
+
+      allExpenses = [...synced, ...pending];
+      updateCatCounts();
+      renderHome();
+    }
+  } catch(e) {
+    document.getElementById('recent-list').innerHTML = '<div class="empty">데이터를 불러오지 못했어요</div>';
+  } finally {
+    hideLoading();
+  }
+}
+
+function updateCatCounts() {
+  categories.forEach(c => c.count = 0);
+  allExpenses.forEach(e => {
+    const c = categories.find(c => c.name === e.category);
+    if (c) c.count++;
+  });
+  saveCats();
+}
+
+// ── 홈 렌더 ──────────────────────────────────────────────
+function renderHome() {
+  const tzNow = new Date(Date.now() + (settings.timezoneOffset ?? 7) * 3600000);
+  const y = tzNow.getUTCFullYear(), m = tzNow.getUTCMonth() + 1;
+  const ym = `${y}-${String(m).padStart(2,'0')}`;
+  const thisMonth = allExpenses.filter(e => e.date.startsWith(ym));
+
+  // 월 레이블 & 섹션 타이틀
+  document.getElementById('home-month-label').textContent = t('monthLabel', y, m);
+  document.getElementById('recent-title').textContent = t('recentTitle', y, m);
+
+  // 화폐별 합산
+  const totals = {};
+  thisMonth.forEach(e => {
+    const cur = e.currency || 'THB';
+    totals[cur] = (totals[cur] || 0) + e.amount;
+  });
+
+  const base = settings.baseCurrency;
+  const baseInfo = ALL_CURRENCIES[base];
+
+  // 화폐별 pill (작은 폰트, 나란히)
+  const pillEl = document.getElementById('currency-pills');
+  const curKeys = Object.keys(ALL_CURRENCIES).filter(c => totals[c]);
+  pillEl.innerHTML = curKeys.map(c =>
+    `<div class="currency-pill">${flagOf(c)} ${fmtCur(totals[c], c)}</div>`
+  ).join('');
+
+  // 기준 화폐 합산 크게 표시
+  const equivEl = document.getElementById('base-equiv');
+  const rateEl = document.getElementById('rate-info');
+  const totalBigEl = document.getElementById('home-total-big');
+  const totalLabelEl = document.getElementById('home-total-label');
+
+  if (curKeys.length === 0) {
+    totalLabelEl.textContent = '';
+    totalBigEl.textContent = `${flagOf(base)} ${baseInfo.symbol}0`;
+    equivEl.textContent = ''; rateEl.textContent = '';
+  } else {
+    let totalBase = 0; let ok = Object.keys(exchangeRates).length > 0;
+    Object.entries(totals).forEach(([cur, amt]) => {
+      const v = convertTo(amt, cur, base);
+      if (v === null) ok = false; else totalBase += v;
+    });
+    if (ok) {
+      totalLabelEl.textContent = t('baseEquivLabel', t('curNames')[base] || baseInfo.name);
+      totalBigEl.textContent = `${flagOf(base)} ${fmtCur(Math.round(totalBase), base)}`;
+      rateEl.textContent = rateUpdatedAt ? t('rateInfo', rateUpdatedAt) : '';
+    } else {
+      totalLabelEl.textContent = ''; totalBigEl.textContent = '';
+      equivEl.textContent = ''; rateEl.textContent = '';
+    }
+  }
+
+  // 이번 달 내역만, 날짜+시간 내림차순
+  const list = document.getElementById('recent-list');
+  if (!thisMonth.length) {
+    list.innerHTML = `<div class="empty">${t('noExpense')}</div>`;
+    return;
+  }
+  // 시간이 "HH:MM" 형식인지 검증
+  const validTime = t => /^\d{2}:\d{2}$/.test(t || '');
+  const sorted = [...thisMonth].sort((a, b) => {
+    const da = a.date + (validTime(a.time) ? a.time : '00:00');
+    const db = b.date + (validTime(b.time) ? b.time : '00:00');
+    return db.localeCompare(da);
+  });
+  list.innerHTML = sorted.map((e, i) => {
+    const cat = categories.find(c => c.name === e.category);
+    const emoji = cat ? cat.emoji : '💸';
+    const cur = e.currency || 'THB';
+    const timeStr = validTime(e.time) ? ` ${e.time}` : '';
+    const idx = allExpenses.indexOf(e);
+    const pendingHTML = e._pending ? `<div class="pending-badge"><div class="pending-dot"></div>${t('pendingBadge')}</div>` : '';
+    return `<div class="swipe-wrap" id="sw-home-${idx}">
+      <div class="expense-item">
+        <div class="expense-icon">${emoji}</div>
+        <div class="expense-info">
+          <div class="expense-cat">${e.category || '기타'}</div>
+          <div class="expense-meta">${e.date}${timeStr}${e.memo ? ' · ' + e.memo : ''}</div>
+          ${pendingHTML}
+        </div>
+        <div class="expense-amount"><span class="cur-flag">${flagOf(cur)}</span>-${fmtCur(e.amount, cur)}</div>
+      </div>
+      <div class="swipe-actions">
+        <div class="swipe-edit-btn" onclick="editExpense(${idx})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          ${t('edit')}
+        </div>
+        <div class="swipe-delete-btn" onclick="deleteExpense(${idx})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          ${t('del')}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── 입력 모달 ─────────────────────────────────────────────
+function buildCurrencySelect() {
+  const sel = document.getElementById('currency-select');
+  const active = settings.activeCurrencies.filter(c => ALL_CURRENCIES[c]);
+  sel.innerHTML = active.map(c =>
+    `<option value="${c}">${ALL_CURRENCIES[c].flag} ${c}</option>`
+  ).join('');
+}
+
+function openModal() {
+  document.getElementById('amount-input').value = '';
+  document.getElementById('date-input').value = todayStr();
+  document.getElementById('memo-input').value = '';
+  buildCurrencySelect();
+  const lastCur = localStorage.getItem('lastCurrency') || 'THB';
+  const sel = document.getElementById('currency-select');
+  if ([...sel.options].some(o => o.value === lastCur)) sel.value = lastCur;
+  selectedCat = null;
+  renderCatTags();
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('amount-input').focus(), 100);
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  editingExpenseIdx = null;
+  document.querySelector('.modal-title').textContent = '지출 추가';
+}
+function closeOnOverlay(e) { if (e.target === document.getElementById('modal-overlay')) closeModal(); }
+function onCurrencyChange() { localStorage.setItem('lastCurrency', document.getElementById('currency-select').value); }
+
+function renderCatTags() {
+  const wrap = document.getElementById('cat-wrap');
+  wrap.innerHTML = sortedCats().map(c =>
+    `<div class="cat-tag${selectedCat===c.name?' selected':''}" onclick="selectCat('${c.name}')">${c.emoji} ${c.name}</div>`
+  ).join('') + `<button class="cat-add-btn" onclick="openCatModal(null)">+ 추가</button>`;
+}
+function selectCat(name) { selectedCat = name; renderCatTags(); }
+
+// ── 오프라인 대기열 ───────────────────────────────────────
+function loadQueue() {
+  try { return JSON.parse(localStorage.getItem('pendingQueue') || '[]'); } catch { return []; }
+}
+function saveQueue(q) { localStorage.setItem('pendingQueue', JSON.stringify(q)); }
+
+async function flushQueue() {
+  const q = loadQueue();
+  if (!q.length) return;
+  let remaining = [];
+  for (const item of q) {
+    try {
+      const params = new URLSearchParams({action:'addExpense', date:item.date, amount:item.amount, category:item.category, memo:item.memo||'', currency:item.currency, time:item.time});
+      const r = await fetch(`${GAS_URL}?${params}`);
+      const j = await r.json();
+      if (j.success) {
+        // allExpenses에서 해당 대기 항목 찾아서 _pending 해제
+        const found = allExpenses.find(e => e._pendingId === item._pendingId);
+        if (found) { found._pending = false; delete found._pendingId; }
+      } else { remaining.push(item); }
+    } catch { remaining.push(item); }
+  }
+  saveQueue(remaining);
+  if (remaining.length < q.length) { renderHome(); showSync('synced'); }
+}
+
+async function saveExpense() {
+  const amount = Number(document.getElementById('amount-input').value);
+  const date = document.getElementById('date-input').value;
+  const memo = document.getElementById('memo-input').value.trim();
+  const currency = document.getElementById('currency-select').value;
+  if (!amount || amount <= 0) { alert('금액을 입력해주세요'); return; }
+  if (!selectedCat) { alert('분류를 선택해주세요'); return; }
+
+  // 수정 모드
+  if (editingExpenseIdx !== null) {
+    const idxToEdit = editingExpenseIdx;
+    closeModal(); // editingExpenseIdx 초기화 포함
+    await updateExpense(idxToEdit, {date, amount, category:selectedCat, memo, currency});
+    return;
+  }
+
+  const now = new Date(Date.now() + (settings.timezoneOffset ?? 7) * 3600000);
+  const time = `${String(now.getUTCHours()).padStart(2,'0')}:${String(now.getUTCMinutes()).padStart(2,'0')}`;
+  const pendingId = Date.now() + Math.random();
+  const expense = {date, amount, category:selectedCat, memo, currency, time, _pending: true, _pendingId: pendingId};
+
+  allExpenses.push(expense);
+  const cat = categories.find(c => c.name === selectedCat);
+  if (cat) { cat.count++; saveCats(); }
+  closeModal();
+  renderHome();
+
+  showSync('syncing');
+  try {
+    const params = new URLSearchParams({action:'addExpense', date, amount, category:selectedCat, memo, currency, time});
+    const r = await fetch(`${GAS_URL}?${params}`);
+    const j = await r.json();
+    if (j.success) {
+      expense._pending = false; delete expense._pendingId;
+      showSync('synced');
+      renderHome();
+    } else { throw new Error(); }
+  } catch {
+    // 오프라인 대기열에 추가
+    const q = loadQueue();
+    q.push({date, amount, category:selectedCat, memo, currency, time, _pendingId: pendingId});
+    saveQueue(q);
+    showSync('offline');
+    renderHome();
+  }
+}
+
+async function updateExpense(idx, {date, amount, category, memo, currency}) {
+  const old = allExpenses[idx];
+  if (!old) return;
+  const time = old.time;
+  const oldRow = old._row;
+  const wasPending = old._pending;
+
+  // 로컬 즉시 업데이트
+  Object.assign(old, {date, amount, category, memo, currency, _pending: true});
+  renderHome();
+  if (document.getElementById('page-stat').classList.contains('active')) renderStat();
+
+  if (wasPending) {
+    // 대기열 항목 업데이트
+    const q = loadQueue().map(item =>
+      item._pendingId === old._pendingId ? {...item, date, amount, category, memo, currency} : item
+    );
+    saveQueue(q);
+    old._pending = true;
+    renderHome();
+    return;
+  }
+
+  showSync('syncing');
+  try {
+    // 기존 행 삭제 후 새 행 추가
+    if (oldRow) await fetch(`${GAS_URL}?action=deleteExpense&row=${oldRow}`);
+    const params = new URLSearchParams({action:'addExpense', date, amount, category, memo, currency, time});
+    const r = await fetch(`${GAS_URL}?${params}`);
+    const j = await r.json();
+    if (j.success) {
+      old._pending = false;
+      showSync('synced');
+      renderHome();
+      if (document.getElementById('page-stat').classList.contains('active')) renderStat();
+    } else throw new Error();
+  } catch {
+    const q = loadQueue();
+    q.push({date, amount, category, memo, currency, time, _pendingId: Date.now()});
+    saveQueue(q);
+    showSync('offline');
+    renderHome();
+    if (document.getElementById('page-stat').classList.contains('active')) renderStat();
+  }
+}
+
+// ── 분류 모달 ─────────────────────────────────────────────
+function openCatModal(editName) {
+  editingCatName = editName;
+  const cat = editName ? categories.find(c => c.name === editName) : null;
+  selectedEmoji = cat ? cat.emoji : EMOJIS[0];
+  document.getElementById('cat-name-input').value = cat ? cat.name : '';
+  document.getElementById('cat-modal-title').textContent = editName ? '분류 수정' : '분류 추가';
+  document.getElementById('emoji-grid').innerHTML = EMOJIS.map(e =>
+    `<button class="emoji-btn${e===selectedEmoji?' selected':''}" onclick="pickEmoji('${e}',this)">${e}</button>`
+  ).join('');
+  document.getElementById('cat-modal-btns').innerHTML = editName
+    ? `<button class="btn-cancel" onclick="closeCatModal()">취소</button>
+       <button class="btn-delete" onclick="deleteCat('${editName}')">삭제</button>
+       <button class="btn-confirm" onclick="confirmCatEdit()">저장</button>`
+    : `<button class="btn-cancel" onclick="closeCatModal()">취소</button>
+       <button class="btn-confirm" onclick="confirmCatEdit()">추가</button>`;
+  document.getElementById('cat-modal-overlay').classList.add('open');
+}
+function closeCatModal() { document.getElementById('cat-modal-overlay').classList.remove('open'); }
+function pickEmoji(emoji, btn) {
+  selectedEmoji = emoji;
+  document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+function confirmCatEdit() {
+  const name = document.getElementById('cat-name-input').value.trim();
+  if (!name) { alert('분류 이름을 입력해주세요'); return; }
+  if (editingCatName) {
+    const cat = categories.find(c => c.name === editingCatName);
+    if (!cat) return;
+    if (name !== editingCatName && categories.find(c => c.name === name)) { alert('이미 있는 분류예요'); return; }
+    allExpenses.forEach(e => { if (e.category === editingCatName) e.category = name; });
+    cat.name = name; cat.emoji = selectedEmoji;
+  } else {
+    if (categories.find(c => c.name === name)) { alert('이미 있는 분류예요'); return; }
+    categories.push({name, emoji: selectedEmoji, count: 0});
+  }
+  saveCats(); closeCatModal(); renderCatTags(); renderManageCatList();
+}
+function deleteCat(name) {
+  if (!confirm(`"${name}" 분류를 삭제할까요?`)) return;
+  categories = categories.filter(c => c.name !== name);
+  saveCats();
+  if (selectedCat === name) selectedCat = null;
+  closeCatModal(); renderCatTags(); renderManageCatList();
+}
+
+// ── 분류 관리 모달 ────────────────────────────────────────
+function openManageModal() { renderManageCatList(); document.getElementById('manage-modal-overlay').classList.add('open'); }
+function closeManageModal() { document.getElementById('manage-modal-overlay').classList.remove('open'); }
+function closeManageOnOverlay(e) { if (e.target === document.getElementById('manage-modal-overlay')) closeManageModal(); }
+function renderManageCatList() {
+  document.getElementById('manage-cat-list').innerHTML =
+    sortedCats().map(c => `<div class="manage-cat-item">
+      <div class="manage-cat-emoji">${c.emoji}</div>
+      <div class="manage-cat-name">${c.name}</div>
+      <div class="manage-cat-count">${c.count}회</div>
+      <button class="icon-btn" onclick="openCatModal('${c.name}')">✏️</button>
+    </div>`).join('') +
+    `<div style="padding-top:12px"><button class="cat-add-btn" style="width:100%" onclick="openCatModal(null)">+ 새 분류 추가</button></div>`;
+}
+
+// ── 설정 페이지 ───────────────────────────────────────────
+function renderSettings() {
+  // 섹션 제목 업데이트
+  const sectionTitles = document.querySelectorAll('#page-settings .settings-section h3');
+  if (sectionTitles[0]) sectionTitles[0].textContent = t('usedCurrency');
+  if (sectionTitles[1]) sectionTitles[1].textContent = t('baseCurrency');
+  if (sectionTitles[2]) sectionTitles[2].textContent = t('timezone');
+  if (sectionTitles[3]) sectionTitles[3].textContent = t('languageLabel');
+
+  const descEls = document.querySelectorAll('#page-settings .settings-section p');
+  if (descEls[0]) descEls[0].textContent = t('baseCurrencyDesc');
+  if (descEls[1]) descEls[1].textContent = t('timezoneDesc');
+
+  // 사용 화폐 토글
+  const curNames = t('curNames');
+  const toggleList = document.getElementById('currency-toggle-list');
+  toggleList.innerHTML = Object.entries(ALL_CURRENCIES).map(([code, info]) => {
+    const checked = settings.activeCurrencies.includes(code);
+    return `<div class="setting-row">
+      <div class="setting-label"><span class="setting-flag">${info.flag}</span>${curNames[code] || info.name} (${code})</div>
+      <label class="toggle">
+        <input type="checkbox" ${checked?'checked':''} onchange="toggleCurrency('${code}',this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>`;
+  }).join('');
+
+  // 기준 화폐 라디오
+  const baseList = document.getElementById('base-currency-list');
+  baseList.innerHTML = Object.entries(ALL_CURRENCIES).map(([code, info]) =>
+    `<label class="radio-row">
+      <div class="setting-label"><span class="setting-flag">${info.flag}</span>${curNames[code] || info.name} (${code})</div>
+      <input type="radio" name="baseCur" value="${code}" ${settings.baseCurrency===code?'checked':''}
+        onchange="setBaseCurrency('${code}')">
+    </label>`
+  ).join('');
+
+  // 시간대 라디오
+  const tzList = document.getElementById('timezone-list');
+  tzList.innerHTML = TIMEZONES.map(tz =>
+    `<label class="radio-row">
+      <div class="setting-label">${tz.label}</div>
+      <input type="radio" name="tz" value="${tz.offset}" ${settings.timezoneOffset===tz.offset?'checked':''}
+        onchange="setTimezone(${tz.offset})">
+    </label>`
+  ).join('');
+
+  // 언어 라디오
+  const langList = document.getElementById('language-list');
+  if (langList) langList.innerHTML = LANGUAGES.map(lang =>
+    `<label class="radio-row">
+      <div class="setting-label">${lang.label}</div>
+      <input type="radio" name="lang" value="${lang.code}" ${(settings.language||'ko')===lang.code?'checked':''}
+        onchange="setLanguage('${lang.code}')">
+    </label>`
+  ).join('');
+
+  // 네비 라벨 업데이트
+  applyLanguage();
+}
+
+function toggleCurrency(code, on) {
+  if (on) {
+    if (!settings.activeCurrencies.includes(code)) settings.activeCurrencies.push(code);
+  } else {
+    // 최소 1개는 유지
+    if (settings.activeCurrencies.length <= 1) {
+      alert('최소 1개는 선택해야 해요');
+      renderSettings(); return;
+    }
+    settings.activeCurrencies = settings.activeCurrencies.filter(c => c !== code);
+    // 기준 화폐가 비활성화되면 첫 번째로 변경
+    if (!settings.activeCurrencies.includes(settings.baseCurrency)) {
+      settings.baseCurrency = settings.activeCurrencies[0];
+    }
+  }
+  saveSettings(settings);
+  renderSettings();
+  renderHome();
+}
+
+function setBaseCurrency(code) {
+  settings.baseCurrency = code;
+  if (!settings.activeCurrencies.includes(code)) {
+    settings.activeCurrencies.push(code);
+  }
+  saveSettings(settings);
+  renderHome();
+}
+
+function setTimezone(offset) {
+  settings.timezoneOffset = offset;
+  saveSettings(settings);
+}
+
+function setLanguage(lang) {
+  settings.language = lang;
+  saveSettings(settings);
+  applyLanguage();
+  renderHome();
+  renderSettings();
+}
+
+function applyLanguage() {
+  // 네비 버튼 라벨
+  const navBtns = document.querySelectorAll('.nav-btn');
+  const labels = [t('home'), t('stat'), t('settings')];
+  navBtns.forEach((btn, i) => {
+    const last = btn.lastChild;
+    if (last && last.nodeType === 3) last.textContent = labels[i];
+  });
+  // 모달 제목 (편집 모드 아닐 때)
+  const modalTitle = document.querySelector('.modal-title');
+  if (modalTitle && editingExpenseIdx === null) modalTitle.textContent = t('addExpense');
+  // 저장 버튼
+  const saveBtn = document.getElementById('save-btn');
+  if (saveBtn) saveBtn.textContent = t('save');
+  // 메모 placeholder
+  const memoInput = document.getElementById('memo-input');
+  if (memoInput) memoInput.placeholder = t('memoPlaceholder');
+  // 로딩 오버레이
+  const loadP = document.querySelector('.load-box p');
+  const loadS = document.querySelector('.load-box small');
+  if (loadP) loadP.textContent = t('loadingTitle');
+  if (loadS) loadS.textContent = t('loadingSmall');
+}
+
+// ── 통계 ─────────────────────────────────────────────────
+function changeMonth(dir) { statMonth.setMonth(statMonth.getMonth()+dir); renderStat(); }
+
+function renderStat() {
+  const y = statMonth.getFullYear(), m = statMonth.getMonth()+1;
+  const ym = `${y}-${String(m).padStart(2,'0')}`;
+  document.getElementById('stat-month-label').textContent = `${y}.${String(m).padStart(2,'0')}`;
+
+  const data = allExpenses.filter(e => e.date.startsWith(ym));
+  const base = settings.baseCurrency;
+
+  // 화폐별 합산
+  const totals = {};
+  data.forEach(e => { const c = e.currency||'THB'; totals[c] = (totals[c]||0)+e.amount; });
+
+  const totalEl = document.getElementById('stat-total-list');
+  let html = Object.keys(ALL_CURRENCIES).filter(c=>totals[c]).map(c =>
+    `<div class="stat-total-row"><span>${flagOf(c)}</span>${fmtCur(totals[c],c)}</div>`
+  ).join('') || `<div class="stat-total-row">${flagOf(base)} ${ALL_CURRENCIES[base].symbol}0</div>`;
+
+  // 기준 화폐 합산
+  const multiCur = Object.keys(totals).length > 1 || (Object.keys(totals).length===1 && !totals[base]);
+  if (multiCur && Object.keys(exchangeRates).length) {
+    let totalBase = 0; let ok = true;
+    Object.entries(totals).forEach(([c,a]) => {
+      const v = convertTo(a, c, base);
+      if (v===null) ok=false; else totalBase+=v;
+    });
+    if (ok) html += `<div class="stat-total-row equiv">${flagOf(base)} ≈ ${fmtCur(Math.round(totalBase), base)} 합산</div>`;
+  }
+  totalEl.innerHTML = html;
+
+  // 분류별 (기준 화폐 환산 기준)
+  const catMap = {};
+  data.forEach(e => {
+    const baseAmt = convertTo(e.amount, e.currency||'THB', base) ?? e.amount;
+    catMap[e.category] = (catMap[e.category]||0) + baseAmt;
+  });
+  const catEntries = Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+  const catTotal = catEntries.reduce((s,[,v])=>s+v, 0);
+  drawPie(catEntries, catTotal);
+
+  const barList = document.getElementById('cat-bar-list');
+  barList.innerHTML = catEntries.map(([cat, baseAmt]) => {
+    const pct = catTotal ? Math.round(baseAmt/catTotal*100) : 0;
+    const c = categories.find(c=>c.name===cat);
+    return `<div class="cat-bar-item">
+      <div class="cat-bar-header">
+        <span>${c?c.emoji:''} ${cat}</span>
+        <span>${flagOf(base)} ${fmtCur(Math.round(baseAmt), base)} (${pct}%)</span>
+      </div>
+      <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('') || '<div class="empty" style="padding:20px 0">지출 내역이 없어요</div>';
+
+  // 일별 내역 (날짜 내림차순, 같은 날은 시간 내림차순)
+  const vt = t => /^\d{2}:\d{2}$/.test(t || '');
+  const dayMap = {};
+  data.forEach(e => { if(!dayMap[e.date]) dayMap[e.date]=[]; dayMap[e.date].push(e); });
+  const days = Object.keys(dayMap).sort((a,b)=>b.localeCompare(a));
+  document.getElementById('day-list').innerHTML = days.map(d => {
+    const items = [...dayMap[d]].sort((a,b) => {
+      const ta = vt(a.time) ? a.time : '00:00';
+      const tb = vt(b.time) ? b.time : '00:00';
+      return tb.localeCompare(ta);
+    });
+    const dayBase = items.reduce((s,e)=>{
+      return s + (convertTo(e.amount, e.currency||'THB', base) ?? e.amount);
+    }, 0);
+    return `<div class="day-group">
+      <div class="day-group-header"><span>${d}</span><span>${flagOf(base)} ${fmtCur(Math.round(dayBase), base)}</span></div>
+      ${items.map(e => {
+        const c = categories.find(c=>c.name===e.category);
+        const cur = e.currency||'THB';
+        const tStr = vt(e.time) ? `<span style="color:var(--sub);font-size:11px;margin-left:4px;">${e.time}</span>` : '';
+        const idx2 = allExpenses.indexOf(e);
+        const pBadge = e._pending ? `<div class="pending-badge"><div class="pending-dot"></div>${t('pendingBadge')}</div>` : '';
+        return `<div class="swipe-wrap" id="sw-stat-${idx2}">
+          <div class="expense-item">
+            <div class="expense-icon" style="width:34px;height:34px;font-size:16px">${c?c.emoji:'💸'}</div>
+            <div class="expense-info">
+              <div class="expense-cat" style="font-size:13px">${e.category||'기타'}${tStr}</div>
+              ${e.memo?`<div class="expense-meta">${e.memo}</div>`:''}
+              ${pBadge}
+            </div>
+            <div class="expense-amount" style="font-size:14px"><span class="cur-flag">${flagOf(cur)}</span>-${fmtCur(e.amount,cur)}</div>
+          </div>
+          <div class="swipe-actions">
+            <div class="swipe-edit-btn" onclick="editExpense(${idx2})">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              ${t('edit')}
+            </div>
+            <div class="swipe-delete-btn" onclick="deleteExpense(${idx2})">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              ${t('del')}
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('') || '<div class="empty" style="padding:20px 0">지출 내역이 없어요</div>';
+}
+
+function drawPie(entries, total) {
+  const canvas = document.getElementById('pieChart');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  if (!entries.length || !total) {
+    ctx.fillStyle = '#E8E8F0'; ctx.beginPath(); ctx.arc(W/2,H/2,W/2-4,0,Math.PI*2); ctx.fill(); return;
+  }
+  const COLORS = ['#5B6AF0','#FF6B9D','#FFB830','#00C9A7','#FF5C5C','#845EC2','#0081CF','#F9A825'];
+  let start = -Math.PI/2;
+  entries.forEach(([,amt], i) => {
+    const slice = (amt/total)*Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(W/2,H/2);
+    ctx.arc(W/2,H/2,W/2-4,start,start+slice);
+    ctx.fillStyle = COLORS[i%COLORS.length]; ctx.fill();
+    start += slice;
+  });
+  ctx.beginPath(); ctx.arc(W/2,H/2,W/4,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+}
+
+// ── 토스트 ───────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── 로딩 오버레이 ─────────────────────────────────────────
+function showLoading() { document.getElementById('load-overlay').classList.remove('hidden'); }
+function hideLoading() { document.getElementById('load-overlay').classList.add('hidden'); }
+
+// ── 동기화 상태 바 ────────────────────────────────────────
+let syncTimer = null;
+function showSync(state) { // 'syncing' | 'synced' | 'error'
+  const bar = document.getElementById('sync-bar');
+  const dot = document.getElementById('sync-dot');
+  const txt = document.getElementById('sync-text');
+  clearTimeout(syncTimer);
+  bar.className = `sync-bar show ${state}`;
+  if (state === 'syncing') {
+    dot.className = 'sync-dot spinning';
+    txt.textContent = '동기화 중...';
+  } else if (state === 'synced') {
+    dot.className = 'sync-dot';
+    txt.textContent = '✓ 동기화 완료';
+    syncTimer = setTimeout(() => bar.classList.remove('show'), 2500);
+  } else if (state === 'offline') {
+    dot.className = 'sync-dot';
+    txt.textContent = '📴 오프라인 — 연결 시 자동 동기화';
+    syncTimer = setTimeout(() => bar.classList.remove('show'), 3500);
+  } else {
+    dot.className = 'sync-dot';
+    txt.textContent = '⚠️ 저장 실패 — 네트워크 확인';
+    syncTimer = setTimeout(() => bar.classList.remove('show'), 4000);
+  }
+}
+
+// ── 스와이프 삭제 ─────────────────────────────────────────
+function deleteExpense(idx) {
+  const expense = allExpenses[idx];
+  if (!expense) return;
+  if (!confirm(`"${expense.category}" ${fmtCur(expense.amount, expense.currency||'THB')} 삭제할까요?`)) {
+    // 닫기: 열려있는 swipe-wrap 초기화
+    document.querySelectorAll('.swipe-wrap .expense-item').forEach(el => el.style.transform = '');
+    return;
+  }
+  const row = expense._row;
+  allExpenses.splice(idx, 1);
+  renderHome();
+  if (document.getElementById('page-stat').classList.contains('active')) renderStat();
+  if (!row) return; // 로컬 추가 항목은 _row 없음
+  showSync('syncing');
+  fetch(`${GAS_URL}?action=deleteExpense&row=${row}`)
+    .then(r => r.json())
+    .then(j => showSync(j.success ? 'synced' : 'error'))
+    .catch(() => showSync('error'));
+}
+
+// 스와이프 제스처 (터치)
+let swipeTouchState = null;
+document.addEventListener('touchstart', e => {
+  const wrap = e.target.closest('.swipe-wrap');
+  if (!wrap) { closeAllSwipes(); return; }
+  const item = wrap.querySelector('.expense-item');
+  if (!item) return;
+  swipeTouchState = { wrap, item, startX: e.touches[0].clientX, startY: e.touches[0].clientY, moved: false };
+}, { passive: true });
+
+document.addEventListener('touchmove', e => {
+  if (!swipeTouchState) return;
+  const { item, startX, startY } = swipeTouchState;
+  const dx = e.touches[0].clientX - startX;
+  const dy = e.touches[0].clientY - startY;
+  if (!swipeTouchState.moved && Math.abs(dy) > Math.abs(dx)) { swipeTouchState = null; return; }
+  swipeTouchState.moved = true;
+  if (dx < 0) {
+    item.style.transform = `translateX(${Math.max(dx, -80)}px)`;
+    item.style.transition = 'none';
+  }
+}, { passive: true });
+
+document.addEventListener('touchend', e => {
+  if (!swipeTouchState || !swipeTouchState.moved) { swipeTouchState = null; return; }
+  const { wrap, item, startX } = swipeTouchState;
+  const dx = e.changedTouches[0].clientX - startX;
+  item.style.transition = 'transform .15s';
+  if (dx < -50) {
+    item.style.transform = 'translateX(-152px)';
+    // 다른 wrap 닫기
+    document.querySelectorAll('.swipe-wrap').forEach(w => {
+      if (w !== wrap) w.querySelector('.expense-item').style.transform = '';
+    });
+  } else {
+    item.style.transform = '';
+  }
+  swipeTouchState = null;
+});
+
+function closeAllSwipes() {
+  document.querySelectorAll('.swipe-wrap .expense-item').forEach(el => {
+    el.style.transition = 'transform .15s';
+    el.style.transform = '';
+  });
+}
+
+// ── 수정 모달 열기 ────────────────────────────────────────
+function editExpense(idx) {
+  const e = allExpenses[idx];
+  if (!e) return;
+  closeAllSwipes();
+  editingExpenseIdx = idx;
+  document.querySelector('.modal-title').textContent = '지출 수정';
+  document.getElementById('amount-input').value = e.amount;
+  document.getElementById('date-input').value = e.date;
+  document.getElementById('memo-input').value = e.memo || '';
+  buildCurrencySelect();
+  const sel = document.getElementById('currency-select');
+  if ([...sel.options].some(o => o.value === e.currency)) sel.value = e.currency;
+  selectedCat = e.category;
+  renderCatTags();
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+// ── 초기화 ───────────────────────────────────────────────
+(function init() {
+  document.getElementById('stat-month-label').textContent =
+    `${statMonth.getFullYear()}.${String(statMonth.getMonth()+1).padStart(2,'0')}`;
+
+  applyLanguage();
+  loadData(); // 대기 항목은 loadData() 안에서 합쳐짐
+  loadExchangeRates();
+
+  // 인터넷 연결 시 자동 동기화
+  window.addEventListener('online', () => {
+    showSync('syncing');
+    flushQueue().then(() => loadData());
+  });
+})();
+</script>
+</body>
+</html>
