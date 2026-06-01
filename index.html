@@ -783,7 +783,10 @@ async function loadData() {
         _pendingId: item._pendingId
       }));
 
-      allExpenses = [...synced, ...pending];
+      // pending 중 이미 synced에 있는 항목 제거 (중복 방지)
+      const syncedIds = new Set(synced.map(e => `${e.date}_${e.amount}_${e.category}_${e.time}`));
+      const uniquePending = pending.filter(p => !syncedIds.has(`${p.date}_${p.amount}_${p.category}_${p.time}`));
+      allExpenses = [...synced, ...uniquePending];
       updateCatCounts();
       renderHome();
     }
@@ -800,7 +803,7 @@ function updateCatCounts() {
     const c = categories.find(c => c.name === e.category);
     if (c) c.count++;
   });
-  saveCats();
+  // saveCats()는 여기서 호출하지 않음 (loadData 때마다 GAS 요청 방지)
 }
 
 // ── 홈 렌더 ──────────────────────────────────────────────
