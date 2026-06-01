@@ -17,8 +17,8 @@
     --canvas: #ffffff;
     --surface-soft: #f7f7f7;
     --surface-card: #fafafa;
-    --surface-dark: #1a2129;
-    --surface-dark-elevated: #262e38;
+    --surface-dark: #1c69d4;
+    --surface-dark-elevated: #0f56b3;
     --hairline: #f0f0f0;
     --hairline-strong: #e0e0e0;
     --ink: #262626;
@@ -64,8 +64,7 @@
   .nav-btn.active svg { stroke-width: 2; }
 
   /* ── PAGE ── */
-  .page { display: none; padding: env(safe-area-inset-top) 0 88px; max-width: 480px; margin: 0 auto; }
-  #page-home { padding-top: 0; }
+  .page { display: none; padding: 0 0 88px; max-width: 480px; margin: 0 auto; }
   .page.active { display: block; }
 
   /* ── HOME HERO (dark band) ── */
@@ -219,8 +218,7 @@
   /* ── STATISTICS ── */
   .stat-header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 20px 20px 16px; background: var(--canvas);
-    border-bottom: 1px solid var(--hairline);
+    padding: calc(env(safe-area-inset-top) + 20px) 20px 16px; background: var(--canvas);
   }
   .stat-header h2 { font-size: 20px; font-weight: 700; color: var(--ink); letter-spacing: 0; }
   .month-nav { display: flex; align-items: center; gap: 0; }
@@ -279,7 +277,7 @@
 
   /* ── SETTINGS PAGE ── */
   #page-settings { padding: 0 0 88px; background: var(--surface-soft); }
-  #page-settings h2 { font-size: 20px; font-weight: 700; padding: 20px 20px 16px; background: var(--canvas); border-bottom: 1px solid var(--hairline); }
+  #page-settings h2 { font-size: 20px; font-weight: 700; padding: calc(env(safe-area-inset-top) + 20px) 20px 16px; background: var(--canvas); border-bottom: 1px solid var(--hairline); }
   #page-settings > div { margin-top: 12px; }
   #page-settings > div:first-of-type { margin-top: 0; }
 
