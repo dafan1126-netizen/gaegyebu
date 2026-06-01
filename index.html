@@ -872,7 +872,6 @@ function renderHome() {
     const pendingHTML = e._pending ? `<div class="pending-badge"><div class="pending-dot"></div>${t('pendingBadge')}</div>` : '';
     return `<div class="swipe-wrap" id="sw-home-${idx}">
       <div class="expense-item">
-        <div class="expense-icon">${emoji}</div>
         <div class="expense-info">
           <div class="expense-cat">${e.category || '기타'}</div>
           <div class="expense-meta">${e.date}${timeStr}${e.memo ? ' · ' + e.memo : ''}</div>
