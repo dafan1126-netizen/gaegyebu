@@ -709,7 +709,24 @@ function convertTo(amount, fromCur, toCur) {
 // fromCur→THB: thb = amount / rates[fromCur]  (rates[THB]=1)
 // THB→toCur:   result = thb * rates[toCur]
 
-function saveCats() { localStorage.setItem('cats', JSON.stringify(categories)); }
+function saveCats() {
+  localStorage.setItem('cats', JSON.stringify(categories));
+  fetch(`${GAS_URL}?action=saveCategories&cats=${encodeURIComponent(JSON.stringify(categories))}`)
+    .catch(() => {}); // 오프라인이면 무시, localStorage에는 저장됨
+}
+
+async function loadCategories() {
+  try {
+    const r = await fetch(`${GAS_URL}?action=getCategories`);
+    const j = await r.json();
+    if (j.success && j.cats && j.cats.length > 0) {
+      categories = j.cats;
+      localStorage.setItem('cats', JSON.stringify(categories));
+    }
+  } catch(e) {
+    // 오프라인이면 localStorage 유지
+  }
+}
 function sortedCats() { return [...categories].sort((a,b) => b.count - a.count); }
 
 // ── 환율 로드 ──────────────────────────────────────────────
@@ -1098,7 +1115,7 @@ function renderManageCatList() {
       <div class="manage-cat-emoji">${c.emoji}</div>
       <div class="manage-cat-name">${c.name}</div>
       <div class="manage-cat-count">${c.count}회</div>
-      <button class="icon-btn" onclick="openCatModal('${c.name}')">✏️</button>
+      <button class="icon-btn" onclick="closeManageModal();openCatModal('${c.name}')">✏️</button>
     </div>`).join('') +
     `<div style="padding-top:12px"><button class="cat-add-btn" style="width:100%" onclick="openCatModal(null)">+ 새 분류 추가</button></div>`;
 }
@@ -1482,7 +1499,8 @@ function editExpense(idx) {
     `${statMonth.getFullYear()}.${String(statMonth.getMonth()+1).padStart(2,'0')}`;
 
   applyLanguage();
-  loadData(); // 대기 항목은 loadData() 안에서 합쳐짐
+  loadCategories().then(() => { renderCatTags(); });
+  loadData();
   loadExchangeRates();
 
   // 인터넷 연결 시 자동 동기화
