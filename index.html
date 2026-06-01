@@ -128,10 +128,7 @@
     display: flex; align-items: center; gap: 14px;
   }
   .expense-icon {
-    width: 40px; height: 40px; border-radius: 0;
-    background: var(--surface-card);
-    border: 1px solid var(--hairline);
-    display: flex; align-items: center; justify-content: center;
+    display: none;
     font-size: 20px; flex-shrink: 0;
   }
   .expense-info { flex: 1; min-width: 0; }
@@ -301,9 +298,6 @@
   .btn-cancel { background: var(--surface-soft); color: var(--muted); border: 1px solid var(--hairline) !important; }
   .btn-confirm { background: var(--primary); color: #fff; }
   .btn-delete { background: var(--canvas); color: var(--error); border: 1px solid var(--error) !important; }
-  .emoji-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-  .emoji-btn { width: 36px; height: 36px; border-radius: 0; border: 1px solid var(--hairline); background: var(--surface-card); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-  .emoji-btn.selected { border-color: var(--primary); background: var(--primary); }
 
   /* ── MANAGE MODAL ── */
   .manage-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(26,33,41,.7); z-index: 300; align-items: flex-end; }
@@ -312,7 +306,6 @@
   .manage-modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
   .manage-cat-item { display: flex; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--hairline); gap: 12px; }
   .manage-cat-item:last-child { border-bottom: none; }
-  .manage-cat-emoji { font-size: 20px; width: 32px; text-align: center; }
   .manage-cat-name { flex: 1; font-size: 15px; font-weight: 700; }
   .manage-cat-count { font-size: 12px; font-weight: 300; color: var(--muted); margin-right: 8px; }
   .icon-btn { background: none; border: none; cursor: pointer; padding: 6px; border-radius: 0; font-size: 16px; }
@@ -499,7 +492,6 @@
 <div class="cat-modal-overlay" id="cat-modal-overlay">
   <div class="cat-modal">
     <h3 id="cat-modal-title">분류 추가</h3>
-    <div class="emoji-grid" id="emoji-grid"></div>
     <input id="cat-name-input" type="text" placeholder="분류 이름 (예: 카페)" maxlength="10" />
     <div class="cat-modal-btns" id="cat-modal-btns"></div>
   </div>
@@ -524,14 +516,13 @@ const ALL_CURRENCIES = {
   KRW: { symbol: '₩', name: '한국 원화', flag: '🇰🇷', decimals: 0 },
 };
 
-const EMOJIS = ['🍚','☕','🚌','🛒','🎮','🎬','👕','💊','🏋️','✈️','🎁','📚','🐶','🍺','💡','🏠','💇','🍕'];
 const DEFAULT_CATS = [
-  {name:'식비', emoji:'🍚', count:0},
-  {name:'카페', emoji:'☕', count:0},
-  {name:'교통', emoji:'🚌', count:0},
-  {name:'쇼핑', emoji:'🛒', count:0},
-  {name:'여가', emoji:'🎮', count:0},
-  {name:'의료', emoji:'💊', count:0},
+  {name:'식비', count:0},
+  {name:'카페', count:0},
+  {name:'교통', count:0},
+  {name:'쇼핑', count:0},
+  {name:'여가', count:0},
+  {name:'의료', count:0},
 ];
 
 const LANGUAGES = [
@@ -661,7 +652,6 @@ let settings = loadSettings();
 let categories = JSON.parse(localStorage.getItem('cats') || 'null') || DEFAULT_CATS;
 let allExpenses = [];
 let selectedCat = null;
-let selectedEmoji = EMOJIS[0];
 let editingCatName = null;
 let statMonth = new Date(); statMonth.setDate(1);
 let exchangeRates = {}; // THB 기준
@@ -875,7 +865,7 @@ function renderHome() {
   });
   list.innerHTML = sorted.map((e, i) => {
     const cat = categories.find(c => c.name === e.category);
-    const emoji = cat ? cat.emoji : '💸';
+
     const cur = e.currency || 'THB';
     const timeStr = validTime(e.time) ? ` ${e.time}` : '';
     const idx = allExpenses.indexOf(e);
@@ -937,7 +927,7 @@ function onCurrencyChange() { localStorage.setItem('lastCurrency', document.getE
 function renderCatTags() {
   const wrap = document.getElementById('cat-wrap');
   wrap.innerHTML = sortedCats().map(c =>
-    `<div class="cat-tag${selectedCat===c.name?' selected':''}" onclick="selectCat('${c.name}')">${c.emoji} ${c.name}</div>`
+    `<div class="cat-tag${selectedCat===c.name?' selected':''}" onclick="selectCat('${c.name}')">${c.name}</div>`
   ).join('') + `<button class="cat-add-btn" onclick="openCatModal(null)">+ 추가</button>`;
 }
 function selectCat(name) { selectedCat = name; renderCatTags(); }
@@ -1065,12 +1055,8 @@ async function updateExpense(idx, {date, amount, category, memo, currency}) {
 function openCatModal(editName) {
   editingCatName = editName;
   const cat = editName ? categories.find(c => c.name === editName) : null;
-  selectedEmoji = cat ? cat.emoji : EMOJIS[0];
   document.getElementById('cat-name-input').value = cat ? cat.name : '';
   document.getElementById('cat-modal-title').textContent = editName ? '분류 수정' : '분류 추가';
-  document.getElementById('emoji-grid').innerHTML = EMOJIS.map(e =>
-    `<button class="emoji-btn${e===selectedEmoji?' selected':''}" onclick="pickEmoji('${e}',this)">${e}</button>`
-  ).join('');
   document.getElementById('cat-modal-btns').innerHTML = editName
     ? `<button class="btn-cancel" onclick="closeCatModal()">취소</button>
        <button class="btn-delete" onclick="deleteCat('${editName}')">삭제</button>
@@ -1080,11 +1066,6 @@ function openCatModal(editName) {
   document.getElementById('cat-modal-overlay').classList.add('open');
 }
 function closeCatModal() { document.getElementById('cat-modal-overlay').classList.remove('open'); }
-function pickEmoji(emoji, btn) {
-  selectedEmoji = emoji;
-  document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
-  btn.classList.add('selected');
-}
 function confirmCatEdit() {
   const name = document.getElementById('cat-name-input').value.trim();
   if (!name) { alert('분류 이름을 입력해주세요'); return; }
@@ -1093,10 +1074,10 @@ function confirmCatEdit() {
     if (!cat) return;
     if (name !== editingCatName && categories.find(c => c.name === name)) { alert('이미 있는 분류예요'); return; }
     allExpenses.forEach(e => { if (e.category === editingCatName) e.category = name; });
-    cat.name = name; cat.emoji = selectedEmoji;
+    cat.name = name;
   } else {
     if (categories.find(c => c.name === name)) { alert('이미 있는 분류예요'); return; }
-    categories.push({name, emoji: selectedEmoji, count: 0});
+    categories.push({name, count: 0});
   }
   saveCats(); closeCatModal(); renderCatTags(); renderManageCatList();
 }
@@ -1115,7 +1096,6 @@ function closeManageOnOverlay(e) { if (e.target === document.getElementById('man
 function renderManageCatList() {
   document.getElementById('manage-cat-list').innerHTML =
     sortedCats().map(c => `<div class="manage-cat-item">
-      <div class="manage-cat-emoji">${c.emoji}</div>
       <div class="manage-cat-name">${c.name}</div>
       <div class="manage-cat-count">${c.count}회</div>
       <button class="icon-btn" onclick="closeManageModal();openCatModal('${c.name}')">✏️</button>
@@ -1298,7 +1278,7 @@ function renderStat() {
     const c = categories.find(c=>c.name===cat);
     return `<div class="cat-bar-item">
       <div class="cat-bar-header">
-        <span>${c?c.emoji:''} ${cat}</span>
+        <span>${cat}</span>
         <span>${flagOf(base)} ${fmtCur(Math.round(baseAmt), base)} (${pct}%)</span>
       </div>
       <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%"></div></div>
@@ -1329,7 +1309,6 @@ function renderStat() {
         const pBadge = e._pending ? `<div class="pending-badge"><div class="pending-dot"></div>${t('pendingBadge')}</div>` : '';
         return `<div class="swipe-wrap" id="sw-stat-${idx2}">
           <div class="expense-item">
-            <div class="expense-icon" style="width:34px;height:34px;font-size:16px">${c?c.emoji:'💸'}</div>
             <div class="expense-info">
               <div class="expense-cat" style="font-size:13px">${e.category||'기타'}${tStr}</div>
               ${e.memo?`<div class="expense-meta">${e.memo}</div>`:''}
