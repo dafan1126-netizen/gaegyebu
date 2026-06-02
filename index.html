@@ -3055,6 +3055,16 @@ function flagOf(currency) {
   return (ALL_CURRENCIES[currency] || ALL_CURRENCIES.THB).flag;
 }
 
+async function fetchWithTimeout(url, options = {}, timeout = 6000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+  try {
+    return await fetch(url, {...options, signal: controller.signal});
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // 임의 화폐 → 기준 화폐 환산 (THB 기준 rates 사용)
 function convertTo(amount, fromCur, toCur) {
   if (fromCur === toCur) return amount;
@@ -3090,7 +3100,7 @@ function sortedCats() { return [...categories].sort((a,b) => b.count - a.count);
 // ── 환율 로드 ──────────────────────────────────────────────
 async function loadExchangeRates() {
   try {
-    const res = await fetch('https://api.exchangerate-api.com/v4/latest/THB');
+    const res = await fetchWithTimeout('https://api.exchangerate-api.com/v4/latest/THB', {}, 5000);
     const json = await res.json();
     exchangeRates = json.rates;
     exchangeRates['THB'] = 1;
@@ -3114,9 +3124,25 @@ function switchPage(name, btn) {
 
 // ── 데이터 로드 ───────────────────────────────────────────
 async function loadData() {
+  allExpenses = loadQueue().map(item => ({
+    date: item.date,
+    amount: Number(item.amount),
+    category: item.category,
+    memo: item.memo || '',
+    currency: item.currency,
+    time: item.time,
+    _pending: true,
+    _pendingId: item._pendingId
+  }));
+  updateCatCounts();
+  renderHome();
   showLoading();
+  const loadingFallbackTimer = setTimeout(() => {
+    renderHome();
+    hideLoading();
+  }, 1400);
   try {
-    const res = await fetch(GAS_URL);
+    const res = await fetchWithTimeout(GAS_URL, {}, 6000);
     const json = await res.json();
     if (json.success) {
       const synced = json.data.map(r => ({
@@ -3165,6 +3191,7 @@ async function loadData() {
       document.getElementById('recent-list').innerHTML = `<div class="empty">${t('noExpense')}</div>`;
     }
   } finally {
+    clearTimeout(loadingFallbackTimer);
     hideLoading();
   }
 }
