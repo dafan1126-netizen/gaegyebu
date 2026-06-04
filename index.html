@@ -1807,6 +1807,16 @@ body::after,
   padding-top: 9px;
 }
 
+.minimal-stamp span {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transform: translateY(2px);
+}
+
 .currency-pills {
   grid-column: 1 / -1;
   grid-row: 1;
@@ -1861,12 +1871,14 @@ body::after,
   word-break: keep-all;
 }
 
-.total-amount-row {
+.total-block {
   grid-column: 1 / -1;
   grid-row: 4;
   display: flex;
-  align-items: flex-end;
-  gap: 16px;
+  flex-direction: column;
+  align-items: flex-start;
+  width: fit-content;
+  max-width: 100%;
   min-width: 0;
 }
 
@@ -1882,12 +1894,12 @@ body::after,
 
 .rate-info {
   order: initial;
-  flex: 0 0 auto;
-  margin: 0 0 2px;
+  align-self: flex-end;
+  margin: 8px 0 0;
   color: #6b6860 !important;
   font-size: 11px;
   font-weight: 700;
-  text-align: left;
+  text-align: right;
   white-space: nowrap;
 }
 
@@ -2527,27 +2539,55 @@ body::after,
     height: auto !important;
     padding-top: 20px !important;
     padding-bottom: 26px !important;
+    grid-template-columns: minmax(0, 1fr) 108px !important;
     grid-template-rows: auto 30px auto auto auto !important;
+    column-gap: 14px !important;
   }
 
   .minimal-stamp {
-    position: absolute !important;
-    top: 48px !important;
-    right: 18px !important;
+    position: relative !important;
+    grid-column: 2 !important;
+    grid-row: 3 / span 2 !important;
+    justify-self: end !important;
+    align-self: center !important;
     width: 98px !important;
     height: 98px !important;
-    padding: 2px 0 0 !important;
+    margin: 16px 0 0 !important;
+    padding: 0 !important;
     font-size: 9px !important;
     line-height: 1.14 !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    text-align: center !important;
     transform: none !important;
   }
 
+  .home-header > .minimal-stamp {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  .home-header > .minimal-stamp > span {
+    position: absolute !important;
+    inset: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    transform: translateY(2px) !important;
+  }
+
+  .currency-pills {
+    grid-column: 1 / -1 !important;
+  }
+
   .home-total-label {
+    grid-column: 1 !important;
     margin-top: 14px !important;
-    margin-bottom: 8px !important;
+    margin-bottom: 2px !important;
   }
 
   .home-total-big {
@@ -2555,18 +2595,22 @@ body::after,
     line-height: .86 !important;
   }
 
-  .total-amount-row {
-    gap: 10px !important;
-    align-items: flex-end !important;
+  .total-block {
+    grid-column: 1 !important;
+    width: fit-content !important;
+    max-width: 100% !important;
   }
 
   .base-equiv {
+    grid-column: 1 / -1 !important;
     margin-top: 16px !important;
   }
 
   .rate-info {
-    margin: 0 0 2px !important;
+    align-self: flex-end !important;
+    margin: 8px 0 0 !important;
     font-size: 10px !important;
+    text-align: right !important;
   }
 
   .recent-panel {
@@ -2788,13 +2832,13 @@ body::after,
       </button>
     </div>
     <div class="home-header">
-      <div class="minimal-stamp">MONTHLY<br>EXPENSES</div>
+      <div class="minimal-stamp"><span>MONTHLY<br>EXPENSES</span></div>
       <div class="orbital-glass" aria-hidden="true">
         <span></span><span></span><span></span>
       </div>
       <div class="currency-pills" id="currency-pills"></div>
       <div class="home-total-label" id="home-total-label"></div>
-      <div class="total-amount-row">
+      <div class="total-block">
         <div class="home-total-big" id="home-total-big"></div>
         <div class="rate-info" id="rate-info"></div>
       </div>
