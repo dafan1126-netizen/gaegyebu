@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#07111f">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#f7f5ef">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>가계부</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2786,11 +2786,112 @@ body::after,
 
 @media (max-width: 760px) {
   #page-stat .cat-bar-header span:first-child {
-    font-size: 28px;
+    font-size: 15px;
   }
 
   #page-stat .cat-bar-header span:last-child {
-    font-size: 17px;
+    font-size: 14px;
+  }
+}
+
+html,
+body {
+  background-color: #f7f5ef !important;
+}
+
+#page-stat .stat-card:first-of-type {
+  padding-top: 28px;
+  padding-bottom: 30px;
+}
+
+#page-stat .stat-card:first-of-type .stat-card-title {
+  margin-bottom: 22px;
+  font-size: 13px;
+  color: #6b6860;
+}
+
+.stat-total-label {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin-bottom: 24px;
+}
+
+.stat-total-label span {
+  padding: 10px 13px;
+  border: 1px solid #171717;
+  border-right: 0;
+  color: #080808;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.stat-total-label span:last-child {
+  border-right: 1px solid #171717;
+}
+
+#page-stat .stat-total-list {
+  display: block;
+}
+
+#page-stat .stat-total-row {
+  color: #080808;
+  font-size: clamp(64px, 12vw, 112px);
+  line-height: .82;
+  font-weight: 900;
+}
+
+.stat-total-equiv {
+  margin: 0 0 10px;
+  color: #6b6860;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+#page-stat .cat-bar-item {
+  padding: 15px 0 17px;
+}
+
+#page-stat .cat-bar-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 12px;
+  margin-bottom: 11px;
+}
+
+#page-stat .cat-bar-header span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  color: #080808;
+  font-size: 16px;
+  line-height: 1.1;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#page-stat .cat-bar-header span:last-child {
+  flex: 0 0 auto;
+  color: #080808;
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  #page-stat .stat-total-row {
+    font-size: clamp(60px, 18vw, 86px);
+  }
+
+  #page-stat .cat-bar-header span:first-child {
+    font-size: 15px;
+  }
+
+  #page-stat .cat-bar-header span:last-child {
+    font-size: 13px;
   }
 }
 
@@ -2863,6 +2964,8 @@ body::after,
   </div>
   <div class="stat-card">
     <div class="stat-card-title">총 지출</div>
+    <div class="stat-total-label" id="stat-total-label"></div>
+    <div class="stat-total-equiv" id="stat-total-equiv"></div>
     <div class="stat-total-list" id="stat-total-list"></div>
   </div>
   <div class="stat-card">
@@ -3859,21 +3962,22 @@ function renderStat() {
   data.forEach(e => { const c = e.currency||'THB'; totals[c] = (totals[c]||0)+e.amount; });
 
   const totalEl = document.getElementById('stat-total-list');
-  let html = Object.keys(ALL_CURRENCIES).filter(c=>totals[c]).map(c =>
-    `<div class="stat-total-row"><span>${flagOf(c)}</span>${fmtCur(totals[c],c)}</div>`
-  ).join('') || `<div class="stat-total-row">${flagOf(base)} ${ALL_CURRENCIES[base].symbol}0</div>`;
+  const totalLabelEl = document.getElementById('stat-total-label');
+  const totalEquivEl = document.getElementById('stat-total-equiv');
+  const activeTotals = Object.keys(ALL_CURRENCIES).filter(c=>totals[c]);
+  totalLabelEl.innerHTML = activeTotals.map(c =>
+    `<span>${flagOf(c)} ${c} ${fmtCur(totals[c],c)}</span>`
+  ).join('') || `<span>${flagOf(base)} ${base} ${ALL_CURRENCIES[base].symbol}0</span>`;
 
   // 기준 화폐 합산
-  const multiCur = Object.keys(totals).length > 1 || (Object.keys(totals).length===1 && !totals[base]);
-  if (multiCur && Object.keys(exchangeRates).length) {
-    let totalBase = 0; let ok = true;
-    Object.entries(totals).forEach(([c,a]) => {
-      const v = convertTo(a, c, base);
-      if (v===null) ok=false; else totalBase+=v;
-    });
-    if (ok) html += `<div class="stat-total-row equiv">${flagOf(base)} ≈ ${fmtCur(Math.round(totalBase), base)} ${t('total')}</div>`;
-  }
-  totalEl.innerHTML = html;
+  let totalBase = 0;
+  let ok = Object.keys(totals).length === 0 || Object.keys(exchangeRates).length > 0;
+  Object.entries(totals).forEach(([c,a]) => {
+    const v = convertTo(a, c, base);
+    if (v===null) ok=false; else totalBase+=v;
+  });
+  totalEl.innerHTML = `<div class="stat-total-row">${fmtCur(Math.round(ok ? totalBase : (totals[base] || 0)), base)}</div>`;
+  totalEquivEl.textContent = t('baseEquivLabel', t('curNames')[base] || ALL_CURRENCIES[base].name);
 
   // 분류별 (기준 화폐 환산 기준)
   const catMap = {};
