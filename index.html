@@ -2620,6 +2620,36 @@ body::after,
   }
 }
 
+@media (orientation: landscape) and (max-height: 600px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  .page,
+  #page-stat,
+  #page-settings {
+    width: min(430px, 100vw);
+    max-width: 430px;
+    margin-left: auto;
+    margin-right: auto;
+    border-left: 1px solid #171717;
+    border-right: 1px solid #171717;
+  }
+
+  .nav {
+    width: min(430px, 100vw);
+  }
+
+  .modal,
+  .manage-modal {
+    max-width: 430px;
+  }
+
+  .fab {
+    right: max(18px, calc((100vw - 430px) / 2 + 18px));
+  }
+}
+
 .pie-wrap {
   display: none !important;
 }
@@ -3065,6 +3095,18 @@ async function fetchWithTimeout(url, options = {}, timeout = 6000) {
   }
 }
 
+function loadExpenseCache() {
+  try {
+    return JSON.parse(localStorage.getItem('expenseCache') || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function saveExpenseCache(expenses) {
+  localStorage.setItem('expenseCache', JSON.stringify(expenses));
+}
+
 // 임의 화폐 → 기준 화폐 환산 (THB 기준 rates 사용)
 function convertTo(amount, fromCur, toCur) {
   if (fromCur === toCur) return amount;
@@ -3124,25 +3166,9 @@ function switchPage(name, btn) {
 
 // ── 데이터 로드 ───────────────────────────────────────────
 async function loadData() {
-  allExpenses = loadQueue().map(item => ({
-    date: item.date,
-    amount: Number(item.amount),
-    category: item.category,
-    memo: item.memo || '',
-    currency: item.currency,
-    time: item.time,
-    _pending: true,
-    _pendingId: item._pendingId
-  }));
-  updateCatCounts();
-  renderHome();
   showLoading();
-  const loadingFallbackTimer = setTimeout(() => {
-    renderHome();
-    hideLoading();
-  }, 1400);
   try {
-    const res = await fetchWithTimeout(GAS_URL, {}, 6000);
+    const res = await fetchWithTimeout(GAS_URL, {}, 20000);
     const json = await res.json();
     if (json.success) {
       const synced = json.data.map(r => ({
@@ -3171,27 +3197,21 @@ async function loadData() {
       const syncedIds = new Set(synced.map(e => `${e.date}_${e.amount}_${e.category}_${e.time}`));
       const uniquePending = pending.filter(p => !syncedIds.has(`${p.date}_${p.amount}_${p.category}_${p.time}`));
       allExpenses = [...synced, ...uniquePending];
+      saveExpenseCache(synced);
       updateCatCounts();
       renderHome();
     }
   } catch(e) {
-    allExpenses = loadQueue().map(item => ({
-      date: item.date,
-      amount: Number(item.amount),
-      category: item.category,
-      memo: item.memo || '',
-      currency: item.currency,
-      time: item.time,
-      _pending: true,
-      _pendingId: item._pendingId
-    }));
+    const pending = loadQueue().map(item => ({...item, _pending: true}));
+    const cached = loadExpenseCache();
+    const cachedIds = new Set(cached.map(expenseFingerprint));
+    allExpenses = [...cached, ...pending.filter(item => !cachedIds.has(expenseFingerprint(item)))];
     updateCatCounts();
     renderHome();
     if (!allExpenses.length) {
       document.getElementById('recent-list').innerHTML = `<div class="empty">${t('noExpense')}</div>`;
     }
   } finally {
-    clearTimeout(loadingFallbackTimer);
     hideLoading();
   }
 }
@@ -3353,48 +3373,97 @@ function selectCat(name) { selectedCat = name; renderCatTags(); }
 function loadQueue() {
   try { return JSON.parse(localStorage.getItem('pendingQueue') || '[]'); } catch { return []; }
 }
-function saveQueue(q) { localStorage.setItem('pendingQueue', JSON.stringify(q)); }
+function expenseFingerprint(item) {
+  return [
+    normalizeDate(item.date),
+    Number(item.amount) || 0,
+    item.category || '',
+    item.memo || '',
+    item.currency || 'THB',
+    item.time || ''
+  ].join('|');
+}
+function saveQueue(q) {
+  const seen = new Set();
+  const unique = q.filter(item => {
+    const key = item._requestId || expenseFingerprint(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  localStorage.setItem('pendingQueue', JSON.stringify(unique));
+}
+
+let isFlushingQueue = false;
+let isSavingExpense = false;
 
 async function flushQueue() {
+  if (isFlushingQueue) return;
   const q = loadQueue();
   if (!q.length) return;
-  let remaining = [];
-  for (const item of q) {
-    try {
-      const params = new URLSearchParams({action:'addExpense', date:item.date, amount:item.amount, category:item.category, memo:item.memo||'', currency:item.currency, time:item.time});
-      const r = await fetch(`${GAS_URL}?${params}`);
-      const j = await r.json();
-      if (j.success) {
-        // allExpenses에서 해당 대기 항목 찾아서 _pending 해제
-        const found = allExpenses.find(e => e._pendingId === item._pendingId);
-        if (found) { found._pending = false; delete found._pendingId; }
-      } else { remaining.push(item); }
-    } catch { remaining.push(item); }
+  isFlushingQueue = true;
+  try {
+    const latestResponse = await fetchWithTimeout(GAS_URL, {}, 20000);
+    const latestJson = await latestResponse.json();
+    const serverFingerprints = new Set(
+      latestJson.success ? latestJson.data.map(expenseFingerprint) : []
+    );
+    const remaining = [];
+    for (const item of q) {
+      if (serverFingerprints.has(expenseFingerprint(item))) continue;
+      try {
+        const params = new URLSearchParams({
+          action:'addExpense', date:item.date, amount:item.amount,
+          category:item.category, memo:item.memo||'', currency:item.currency,
+          time:item.time, requestId:item._requestId || ''
+        });
+        const r = await fetchWithTimeout(`${GAS_URL}?${params}`, {}, 20000);
+        const j = await r.json();
+        if (!j.success) remaining.push(item);
+      } catch {
+        remaining.push(item);
+      }
+    }
+    saveQueue(remaining);
+    if (remaining.length < q.length) {
+      await loadData();
+      showSync('synced');
+    }
+  } finally {
+    isFlushingQueue = false;
   }
-  saveQueue(remaining);
-  if (remaining.length < q.length) { renderHome(); showSync('synced'); }
 }
 
 async function saveExpense() {
+  if (isSavingExpense) return;
   const amount = Number(document.getElementById('amount-input').value);
   const date = document.getElementById('date-input').value;
   const memo = document.getElementById('memo-input').value.trim();
   const currency = document.getElementById('currency-select').value;
   if (!amount || amount <= 0) { alert('금액을 입력해주세요'); return; }
   if (!selectedCat) { alert('분류를 선택해주세요'); return; }
+  isSavingExpense = true;
+  const saveBtn = document.getElementById('save-btn');
+  saveBtn.disabled = true;
 
   // 수정 모드
   if (editingExpenseIdx !== null) {
     const idxToEdit = editingExpenseIdx;
     closeModal(); // editingExpenseIdx 초기화 포함
-    await updateExpense(idxToEdit, {date, amount, category:selectedCat, memo, currency});
+    try {
+      await updateExpense(idxToEdit, {date, amount, category:selectedCat, memo, currency});
+    } finally {
+      isSavingExpense = false;
+      saveBtn.disabled = false;
+    }
     return;
   }
 
   const now = new Date(Date.now() + (settings.timezoneOffset ?? 7) * 3600000);
   const time = `${String(now.getUTCHours()).padStart(2,'0')}:${String(now.getUTCMinutes()).padStart(2,'0')}`;
   const pendingId = Date.now() + Math.random();
-  const expense = {date, amount, category:selectedCat, memo, currency, time, _pending: true, _pendingId: pendingId};
+  const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const expense = {date, amount, category:selectedCat, memo, currency, time, _pending: true, _pendingId: pendingId, _requestId: requestId};
 
   allExpenses.push(expense);
   const cat = categories.find(c => c.name === selectedCat);
@@ -3404,21 +3473,34 @@ async function saveExpense() {
 
   showSync('syncing');
   try {
-    const params = new URLSearchParams({action:'addExpense', date, amount, category:selectedCat, memo, currency, time});
-    const r = await fetch(`${GAS_URL}?${params}`);
+    const params = new URLSearchParams({action:'addExpense', date, amount, category:selectedCat, memo, currency, time, requestId});
+    const r = await fetchWithTimeout(`${GAS_URL}?${params}`, {}, 20000);
     const j = await r.json();
     if (j.success) {
-      expense._pending = false; delete expense._pendingId;
+      expense._pending = false; delete expense._pendingId; delete expense._requestId;
       showSync('synced');
       renderHome();
     } else { throw new Error(); }
   } catch {
-    // 오프라인 대기열에 추가
-    const q = loadQueue();
-    q.push({date, amount, category:selectedCat, memo, currency, time, _pendingId: pendingId});
-    saveQueue(q);
-    showSync('offline');
+    try {
+      const verifyResponse = await fetchWithTimeout(GAS_URL, {}, 20000);
+      const verifyJson = await verifyResponse.json();
+      const alreadySaved = verifyJson.success && verifyJson.data.some(item => expenseFingerprint(item) === expenseFingerprint(expense));
+      if (alreadySaved) {
+        expense._pending = false; delete expense._pendingId; delete expense._requestId;
+        showSync('synced');
+      } else {
+        saveQueue([...loadQueue(), {date, amount, category:selectedCat, memo, currency, time, _pendingId: pendingId, _requestId: requestId}]);
+        showSync('offline');
+      }
+    } catch {
+      saveQueue([...loadQueue(), {date, amount, category:selectedCat, memo, currency, time, _pendingId: pendingId, _requestId: requestId}]);
+      showSync('offline');
+    }
     renderHome();
+  } finally {
+    isSavingExpense = false;
+    saveBtn.disabled = false;
   }
 }
 
@@ -3939,7 +4021,8 @@ function editExpense(idx) {
   // 인터넷 연결 시 자동 동기화
   window.addEventListener('online', () => {
     showSync('syncing');
-    flushQueue().then(() => loadData());
+    if (loadQueue().length) flushQueue();
+    else loadData();
   });
 })();
 </script>
