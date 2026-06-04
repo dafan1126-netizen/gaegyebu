@@ -1851,8 +1851,6 @@ body::after,
 }
 
 .home-total-big {
-  grid-column: 1 / -1;
-  grid-row: 4;
   order: initial;
   margin: 0;
   color: #080808;
@@ -1861,6 +1859,15 @@ body::after,
   font-weight: 900;
   text-shadow: none;
   word-break: keep-all;
+}
+
+.total-amount-row {
+  grid-column: 1 / -1;
+  grid-row: 4;
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  min-width: 0;
 }
 
 .base-equiv {
@@ -1874,16 +1881,14 @@ body::after,
 }
 
 .rate-info {
-  grid-column: 2;
-  grid-row: 5;
   order: initial;
-  justify-self: end;
-  align-self: end;
-  margin-top: 14px;
+  flex: 0 0 auto;
+  margin: 0 0 2px;
   color: #6b6860 !important;
   font-size: 11px;
   font-weight: 700;
-  text-align: right;
+  text-align: left;
+  white-space: nowrap;
 }
 
 .recent-panel {
@@ -2527,7 +2532,7 @@ body::after,
 
   .minimal-stamp {
     position: absolute !important;
-    top: 70px !important;
+    top: 48px !important;
     right: 18px !important;
     width: 98px !important;
     height: 98px !important;
@@ -2550,16 +2555,22 @@ body::after,
     line-height: .86 !important;
   }
 
+  .total-amount-row {
+    gap: 10px !important;
+    align-items: flex-end !important;
+  }
+
   .base-equiv {
     margin-top: 16px !important;
   }
 
   .rate-info {
-    margin-top: 6px !important;
+    margin: 0 0 2px !important;
+    font-size: 10px !important;
   }
 
   .recent-panel {
-    margin-top: 0 !important;
+    margin-top: 14px !important;
   }
 
   .section-title {
@@ -2783,9 +2794,11 @@ body::after,
       </div>
       <div class="currency-pills" id="currency-pills"></div>
       <div class="home-total-label" id="home-total-label"></div>
-      <div class="home-total-big" id="home-total-big"></div>
+      <div class="total-amount-row">
+        <div class="home-total-big" id="home-total-big"></div>
+        <div class="rate-info" id="rate-info"></div>
+      </div>
       <div class="base-equiv" id="base-equiv"></div>
-      <div class="rate-info" id="rate-info"></div>
     </div>
     <div class="recent-panel">
       <div class="section-title" id="recent-title">최근 내역</div>
