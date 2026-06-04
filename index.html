@@ -2882,16 +2882,68 @@ body {
 }
 
 @media (max-width: 760px) {
+  .liquid-stage {
+    min-height: auto !important;
+    padding-top: 0 !important;
+  }
+
+  .stage-top {
+    height: 64px !important;
+    min-height: 64px !important;
+    padding: 6px 18px 8px !important;
+  }
+
+  .stage-top .app-brand {
+    margin-bottom: 5px !important;
+    font-size: 10px !important;
+  }
+
+  .stage-top .home-sub-label {
+    font-size: 19px !important;
+  }
+
+  .stage-top .home-month-label {
+    margin-top: 5px !important;
+    font-size: 10px !important;
+  }
+
   #page-stat .stat-total-row {
     font-size: clamp(60px, 18vw, 86px);
   }
 
+  #page-stat .cat-bar-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-top: 1px solid #171717;
+  }
+
+  #page-stat .cat-bar-item {
+    min-width: 0;
+    padding: 15px 12px 17px;
+    border-right: 1px solid #171717;
+    border-bottom: 1px solid #171717;
+  }
+
+  #page-stat .cat-bar-item:nth-child(2n) {
+    border-right: 0;
+  }
+
+  #page-stat .cat-bar-header {
+    display: block;
+    margin-bottom: 12px;
+  }
+
   #page-stat .cat-bar-header span:first-child {
+    display: block;
+    margin-bottom: 8px;
     font-size: 15px;
   }
 
   #page-stat .cat-bar-header span:last-child {
+    display: block;
+    overflow: hidden;
     font-size: 13px;
+    text-overflow: ellipsis;
   }
 }
 
