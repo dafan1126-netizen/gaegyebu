@@ -2517,24 +2517,31 @@ body::after,
   }
 
   .home-header {
+    position: relative !important;
     min-height: 0 !important;
     height: auto !important;
     padding-top: 20px !important;
-    padding-bottom: 10px !important;
-    grid-template-rows: auto 8px auto auto auto !important;
+    padding-bottom: 26px !important;
+    grid-template-rows: auto 30px auto auto auto !important;
   }
 
   .minimal-stamp {
+    position: absolute !important;
+    top: 70px !important;
+    right: 18px !important;
     width: 98px !important;
     height: 98px !important;
-    padding-top: 7px !important;
+    padding: 2px 0 0 !important;
     font-size: 9px !important;
     line-height: 1.14 !important;
-    transform: translateY(-6px);
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transform: none !important;
   }
 
   .home-total-label {
-    margin-top: 8px !important;
+    margin-top: 14px !important;
     margin-bottom: 8px !important;
   }
 
@@ -2544,7 +2551,7 @@ body::after,
   }
 
   .base-equiv {
-    margin-top: 12px !important;
+    margin-top: 16px !important;
   }
 
   .rate-info {
@@ -2552,12 +2559,12 @@ body::after,
   }
 
   .recent-panel {
-    margin-top: -1px !important;
+    margin-top: 0 !important;
   }
 
   .section-title {
-    padding-top: 15px !important;
-    padding-bottom: 14px !important;
+    padding-top: 24px !important;
+    padding-bottom: 18px !important;
   }
 
   .expense-item {
@@ -2618,6 +2625,19 @@ body::after,
     font-size: 22px !important;
     line-height: 1.05 !important;
   }
+}
+
+.sync-bar {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform .25s ease, opacity .2s ease, visibility 0s linear .25s !important;
+}
+
+.sync-bar.show {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s !important;
 }
 
 @media (orientation: landscape) and (max-height: 600px) {
@@ -3178,7 +3198,8 @@ async function loadData() {
         category: r.category || '',
         memo: r.memo || '',
         currency: r.currency || 'THB',
-        time: r.time || ''
+        time: r.time || '',
+        requestId: r.requestId || ''
       })).filter(r => r.date && r.amount);
 
       // 대기열 항목은 유지 (아직 시트에 없으니 중복 없음)
@@ -3477,7 +3498,11 @@ async function saveExpense() {
     const r = await fetchWithTimeout(`${GAS_URL}?${params}`, {}, 20000);
     const j = await r.json();
     if (j.success) {
-      expense._pending = false; delete expense._pendingId; delete expense._requestId;
+      expense._pending = false;
+      expense._row = j.row || expense._row;
+      expense.requestId = j.requestId || requestId;
+      delete expense._pendingId;
+      delete expense._requestId;
       showSync('synced');
       renderHome();
     } else { throw new Error(); }
@@ -3509,6 +3534,7 @@ async function updateExpense(idx, {date, amount, category, memo, currency}) {
   if (!old) return;
   const time = old.time;
   const oldRow = old._row;
+  const oldRequestId = old.requestId || '';
   const wasPending = old._pending;
 
   // 로컬 즉시 업데이트
@@ -3528,21 +3554,27 @@ async function updateExpense(idx, {date, amount, category, memo, currency}) {
   }
 
   showSync('syncing');
+  const updateRequestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   try {
     // 기존 행 삭제 후 새 행 추가
-    if (oldRow) await fetch(`${GAS_URL}?action=deleteExpense&row=${oldRow}`);
-    const params = new URLSearchParams({action:'addExpense', date, amount, category, memo, currency, time});
-    const r = await fetch(`${GAS_URL}?${params}`);
+    if (oldRow || oldRequestId) {
+      const deleteParams = new URLSearchParams({action:'deleteExpense', row:oldRow || '', requestId:oldRequestId});
+      await fetch(`${GAS_URL}?${deleteParams}`);
+    }
+    const params = new URLSearchParams({action:'addExpense', date, amount, category, memo, currency, time, requestId:updateRequestId});
+    const r = await fetchWithTimeout(`${GAS_URL}?${params}`, {}, 20000);
     const j = await r.json();
     if (j.success) {
       old._pending = false;
+      old._row = j.row || old._row;
+      old.requestId = j.requestId || updateRequestId;
       showSync('synced');
       renderHome();
       if (document.getElementById('page-stat').classList.contains('active')) renderStat();
     } else throw new Error();
   } catch {
     const q = loadQueue();
-    q.push({date, amount, category, memo, currency, time, _pendingId: Date.now()});
+    q.push({date, amount, category, memo, currency, time, _pendingId: Date.now(), _requestId:updateRequestId});
     saveQueue(q);
     showSync('offline');
     renderHome();
@@ -3898,6 +3930,12 @@ function hideLoading() { document.getElementById('load-overlay').classList.add('
 
 // ── 동기화 상태 바 ────────────────────────────────────────
 let syncTimer = null;
+function hideSync() {
+  const bar = document.getElementById('sync-bar');
+  bar.className = 'sync-bar';
+  document.getElementById('sync-dot').className = 'sync-dot';
+  document.getElementById('sync-text').textContent = '';
+}
 function showSync(state) { // 'syncing' | 'synced' | 'error'
   const bar = document.getElementById('sync-bar');
   const dot = document.getElementById('sync-dot');
@@ -3910,15 +3948,15 @@ function showSync(state) { // 'syncing' | 'synced' | 'error'
   } else if (state === 'synced') {
     dot.className = 'sync-dot';
     txt.textContent = '✓ 동기화 완료';
-    syncTimer = setTimeout(() => bar.classList.remove('show'), 2500);
+    syncTimer = setTimeout(hideSync, 1800);
   } else if (state === 'offline') {
     dot.className = 'sync-dot';
     txt.textContent = '📴 오프라인 — 연결 시 자동 동기화';
-    syncTimer = setTimeout(() => bar.classList.remove('show'), 3500);
+    syncTimer = setTimeout(hideSync, 3500);
   } else {
     dot.className = 'sync-dot';
     txt.textContent = '⚠️ 저장 실패 — 네트워크 확인';
-    syncTimer = setTimeout(() => bar.classList.remove('show'), 4000);
+    syncTimer = setTimeout(hideSync, 4000);
   }
 }
 
@@ -3932,12 +3970,14 @@ function deleteExpense(idx) {
     return;
   }
   const row = expense._row;
+  const requestId = expense.requestId || '';
   allExpenses.splice(idx, 1);
   renderHome();
   if (document.getElementById('page-stat').classList.contains('active')) renderStat();
-  if (!row) return; // 로컬 추가 항목은 _row 없음
+  if (!row && !requestId) return; // 아직 서버에 저장되지 않은 로컬 항목
   showSync('syncing');
-  fetch(`${GAS_URL}?action=deleteExpense&row=${row}`)
+  const params = new URLSearchParams({action:'deleteExpense', row, requestId});
+  fetch(`${GAS_URL}?${params}`)
     .then(r => r.json())
     .then(j => showSync(j.success ? 'synced' : 'error'))
     .catch(() => showSync('error'));
