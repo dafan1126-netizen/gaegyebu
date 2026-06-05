@@ -3433,7 +3433,8 @@ async function loadData() {
         currency: item.currency,
         time: item.time,
         _pending: true,
-        _pendingId: item._pendingId
+        _pendingId: item._pendingId,
+        _requestId: item._requestId || ''
       }));
 
       // pending 중 이미 synced에 있는 항목 제거 (중복 방지)
@@ -3637,6 +3638,24 @@ function saveQueue(q) {
   localStorage.setItem('pendingQueue', JSON.stringify(unique));
 }
 
+function removeLocalPending(expense) {
+  if (!expense) return;
+  const pendingId = expense._pendingId || '';
+  const requestId = expense.requestId || expense._requestId || '';
+  const fingerprint = expenseFingerprint(expense);
+  saveQueue(loadQueue().filter(item => {
+    const samePending = pendingId && item._pendingId === pendingId;
+    const sameRequest = requestId && item._requestId === requestId;
+    const sameFingerprint = expenseFingerprint(item) === fingerprint;
+    return !(samePending || sameRequest || sameFingerprint);
+  }));
+  saveExpenseCache(loadExpenseCache().filter(item => {
+    const sameRequest = requestId && item.requestId === requestId;
+    const sameFingerprint = expenseFingerprint(item) === fingerprint;
+    return !(sameRequest || sameFingerprint);
+  }));
+}
+
 let isFlushingQueue = false;
 let isSavingExpense = false;
 
@@ -3732,9 +3751,17 @@ async function saveExpense() {
     try {
       const verifyResponse = await fetchWithTimeout(GAS_URL, {}, 20000);
       const verifyJson = await verifyResponse.json();
-      const alreadySaved = verifyJson.success && verifyJson.data.some(item => expenseFingerprint(item) === expenseFingerprint(expense));
-      if (alreadySaved) {
-        expense._pending = false; delete expense._pendingId; delete expense._requestId;
+      const savedItem = verifyJson.success && verifyJson.data.find(item =>
+        (item.requestId && item.requestId === requestId) ||
+        expenseFingerprint(item) === expenseFingerprint(expense)
+      );
+      if (savedItem) {
+        expense._pending = false;
+        expense._row = savedItem._row || expense._row;
+        expense.requestId = savedItem.requestId || requestId;
+        delete expense._pendingId;
+        delete expense._requestId;
+        removeLocalPending(expense);
         showSync('synced');
       } else {
         saveQueue([...loadQueue(), {date, amount, category:selectedCat, memo, currency, time, _pendingId: pendingId, _requestId: requestId}]);
@@ -4193,8 +4220,9 @@ function deleteExpense(idx) {
     return;
   }
   const row = expense._row;
-  const requestId = expense.requestId || '';
+  const requestId = expense.requestId || expense._requestId || '';
   allExpenses.splice(idx, 1);
+  removeLocalPending(expense);
   renderHome();
   if (document.getElementById('page-stat').classList.contains('active')) renderStat();
   if (!row && !requestId) return; // 아직 서버에 저장되지 않은 로컬 항목
